@@ -419,7 +419,7 @@ namespace Structures
                 {
                     outputString += " [" + Math.Round(this.values[i, j], decimalRound) + "] ";
                 }
-                outputString += "\n";
+                outputString += "\r\n";
             }
             return outputString;
         }

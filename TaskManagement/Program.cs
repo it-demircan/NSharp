@@ -11,8 +11,16 @@ namespace TaskManagement
     {
         static void Main(string[] args)
         {
+            TaskTwo two = new TaskTwo();
+            two.evaluate();
+
+            TaskThree three = new TaskThree();
+            three.evaluate();
+
             TaskFour tt = new TaskFour();
             tt.evaluate();
+
+            Console.ReadKey();
         }
     }
 }

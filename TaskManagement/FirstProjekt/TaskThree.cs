@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Structures;
+using System.IO;
 using NSharp.Numerics.DG;
 
 namespace TaskManagement.FirstProjekt
@@ -14,13 +15,27 @@ namespace TaskManagement.FirstProjekt
         static int[] elements = {1,2,3,4};
         public void evaluate()
         {
+            String gLegendre = "";
+
+            String gLabatto = "";
             Matrix gaußLobatto;
             Matrix gaußLegendre;
             foreach (int i in elements)
             {
                 gaußLobatto = computeSBPMatrixByGaußLobatto(i);
                 gaußLegendre = computeSBPMatrixByGaußLegendre(i);
+                gLegendre += "N = " + i + "\r\n";
+                gLegendre += gaußLegendre.toString(15);
+                gLegendre += "\r\n";
+
+                gLabatto += "N = " + i + "\r\n";
+                gLabatto += gaußLobatto.toString(15);
+                gLabatto += "\r\n";
             }
+
+            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\gLegendre_SBT.txt", gLegendre);
+            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\gLabatto_SBT.txt", gLabatto);
+            Console.WriteLine("Aufgabe 3 abgeschlossen. Ergebnisse in aktiven Ordner gesichert.");
         }
 
 

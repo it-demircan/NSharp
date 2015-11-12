@@ -17,6 +17,8 @@ namespace TaskManagement.FirstProjekt
 
         public void evaluate()
         {
+            Console.WriteLine("############################");
+            Console.WriteLine("Starte Aufgabe 2....");
             foreach(int i in elements)
             {
                 N = i;
@@ -25,6 +27,8 @@ namespace TaskManagement.FirstProjekt
                 Console.WriteLine("Gauß-Lobatto with N = " + i);
                 evaluateGaussLegendreIntegration();
             }
+            Console.WriteLine("Aufgabe 2 abgeschlossen.");
+            Console.WriteLine("############################");
         }
 
         private void evaluateGaussLegendreIntegration()

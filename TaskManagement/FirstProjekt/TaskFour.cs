@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using NSharp;
 using NSharp.Numerics.DG;
 using NSharp.Converter;
+using System.IO;
 
 namespace TaskManagement.FirstProjekt
 {
@@ -25,11 +26,12 @@ namespace TaskManagement.FirstProjekt
         /// </summary>
         public void evaluate()
         {
-            evaluateFunctionAndGenerateMatLabPlotString(firstFunction);
-            evaluateFunctionAndGenerateMatLabPlotString(secondFunction);
+            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\Aufgabe4_ErsteFunktion_MatLabCode.txt", evaluateFunctionAndGenerateMatLabPlotString(firstFunction));
+            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\Aufgabe4_ZweiteFunktion_MatLabCode.txt", evaluateFunctionAndGenerateMatLabPlotString(secondFunction));
+            Console.WriteLine("Aufgabe 4 abgeschlossen. Ergebnisse in aktiven Ordner gesichert.");
         }
 
-        private void evaluateFunctionAndGenerateMatLabPlotString(Func<double,double> function)
+        private String evaluateFunctionAndGenerateMatLabPlotString(Func<double,double> function)
         {
             Vector gaussLobattoNodes, weights, nodes; 
             LegendrePolynomEvaluator.computeGaussLobattoNodesAndWeights(N, out gaussLobattoNodes, out weights);
@@ -42,6 +44,9 @@ namespace TaskManagement.FirstProjekt
 
             String evaluationMatLabString = MatLabConverter.ConvertToMatLabPlotStringWithAxisLabelAndTitle(nodes, visualizedEvaluation, "X", "Pn - Lagrange Darstellung", "Visualisierung der Lagrange Interpolation anhand cos(x)");
             String derivativeEvaluationMatLabString = MatLabConverter.ConvertToMatLabPlotStringWithAxisLabelAndTitle(nodes, visualizedDerivativeEvaluation, "X", "(d/dx)Pn - Ableitung Lagrange Darstellung", "Visualisierung der Ableitung der Lagrange Interpolation anhand 1/(1+x^2)");
+
+
+            return evaluationMatLabString + "\r\n" + derivativeEvaluationMatLabString;
         }
 
         private Vector visualizeFunction(Matrix visualizationMatrix, Vector evaluation)

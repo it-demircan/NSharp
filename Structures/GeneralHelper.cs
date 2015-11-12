@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Structures
 {
@@ -29,6 +30,18 @@ namespace Structures
                     almostEqual = true;
             }
             return almostEqual;
+        }
+
+
+        public static void WriteOutputText(String path, String text)
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+
+            using (TextWriter writer = File.CreateText(path))
+            {
+                writer.Write(text);
+            }
         }
     }
 }
