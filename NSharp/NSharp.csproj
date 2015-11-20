@@ -47,6 +47,9 @@
     <Compile Include="Numerics\DG\IntegrationToolbox.cs" />
     <Compile Include="Numerics\DG\InterpolationToolbox.cs" />
     <Compile Include="Numerics\DG\LegendrePolynomEvaluator.cs" />
+    <Compile Include="Numerics\OrdinaryPartialEquationsSolver\IODESolver.cs" />
+    <Compile Include="Numerics\OrdinaryPartialEquationsSolver\OrdinaryDifferentialEquation.cs" />
+    <Compile Include="Numerics\OrdinaryPartialEquationsSolver\RungeKuttaSolver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

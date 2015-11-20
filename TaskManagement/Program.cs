@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TaskManagement.FirstProjekt;
+using TaskManagement.SecondProject;
 
 namespace TaskManagement
 {
@@ -11,13 +11,7 @@ namespace TaskManagement
     {
         static void Main(string[] args)
         {
-            TaskTwo two = new TaskTwo();
-            two.evaluate();
-
-            TaskThree three = new TaskThree();
-            three.evaluate();
-
-            TaskFour tt = new TaskFour();
+            TaskTwo tt = new TaskTwo();
             tt.evaluate();
 
             Console.ReadKey();
