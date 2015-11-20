@@ -48,6 +48,7 @@
     <Compile Include="FirstProjekt\TaskThree.cs" />
     <Compile Include="FirstProjekt\TaskTwo.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="SecondProject\ProjectTwo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
