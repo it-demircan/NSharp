@@ -16,22 +16,28 @@ namespace TaskManagement.Kunoth
             //double leftBoudary = -Math.PI;
             //double rightBoundary = -leftBoudary;
             //double timeBoundary = 1.0;
-            //int M = 32;
-            //int N = 32;
-            //double theta = 0.50;
+            //int M = 8;
+            //int N = 8;
+            //double theta = 1.0 / 2.0;
 
             //Vector res = ts.SolvePDE(initalFunction, leftBoundaryFunction, rightBoundaryFunction, leftBoudary, rightBoundary, timeBoundary, M, N, theta);
             //Vector exact = evaluateExactSolution(timeBoundary, leftBoudary, rightBoundary, N);
             ////Console.WriteLine(res.toString(15));
-
-            //double absErr =  NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm((res - exact), (res - exact));
-            //double relErr = absErr/NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm(exact, exact);
+            //Vector diff = (res - exact);
+            //double absErr = NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm(diff, diff);
+            //double temp = NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm(exact, exact);
+            //double relErr = absErr / temp;
             //Console.WriteLine(relErr);
 
-            double[] relError = computeRelativeError(5);
+            evaluateEOC();
+        }
+
+        private void evaluateEOC()
+        {
+            double[] relError = computeRelativeError(7);
             double[] EOC = computeEOC(relError);
             Console.Write("Rel Error:");
-            for(int i = 0; i < relError.Length; i++)
+            for (int i = 0; i < relError.Length; i++)
             {
                 Console.WriteLine(relError[i]);
             }
@@ -77,7 +83,7 @@ namespace TaskManagement.Kunoth
             double[] EOC = new double[relError.Length - 1];
             for (int j = 0; j < EOC.Length - 1; j++)
             {
-                EOC[j] = Math.Log(relError[j] / relError[j + 1]) / Math.Log(2.0);
+                EOC[j] = Math.Log(relError[j] / relError[j+1]) / Math.Log(2.0);
             }
             return EOC;
         }

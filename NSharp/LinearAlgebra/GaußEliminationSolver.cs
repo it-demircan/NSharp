@@ -78,9 +78,9 @@ namespace NSharp.LinearAlgebra
                 b[i,0] = b[i,0]/A[i,i];
                 A[i, i] = 1.0;
                 for (int row = i - 1; row >= 0; row--)
-                {
-                    A[row, i] = 0.0;
+                {       
                     b[row, 0] = b[row, 0] - b[i, 0] * (A[row, i]);
+                    A[row, i] = 0.0;
                 }
             }
 

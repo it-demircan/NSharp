@@ -43,5 +43,22 @@ namespace NSharp.Converter
 
             return sb.ToString().Replace(",",".") ;
         }
+
+        public static String ConvertMatrixToMatLabMatrix(Matrix matrix, String matArray)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(matArray).Append(" = ");
+            sb.Append("[");
+            for (int rows = 0; rows < matrix.NoRows; rows++)
+            {
+                for (int columns = 0; columns < matrix.NoColumns; columns++)
+                {
+                    sb.Append( (""+matrix[rows, columns]).Replace(",",".")).Append(",");
+                }
+                sb.Append(";");
+            }
+            sb.Append("]");
+            return sb.ToString();
+        }
     }
 }
