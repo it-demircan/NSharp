@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Structures;
 
 namespace NSharp.Measures
 {
@@ -18,6 +19,11 @@ namespace NSharp.Measures
             double distance;
             distance = Math.Sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
             return distance;
+        }
+
+        public static double CalculateDiscreteNorm(Vector A, Vector B)
+        {
+            return Math.Sqrt(A * B);
         }
     }
 }

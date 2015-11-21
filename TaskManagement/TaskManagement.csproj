@@ -47,6 +47,7 @@
     <Compile Include="FirstProjekt\TaskFour.cs" />
     <Compile Include="FirstProjekt\TaskThree.cs" />
     <Compile Include="FirstProjekt\TaskTwo.cs" />
+    <Compile Include="Kunoth\ThetaSolverProject.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="SecondProject\ProjectTwo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
