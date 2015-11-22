@@ -62,7 +62,7 @@ namespace NSharp.Numerics.PDE
             tempVector = tempVector + (computeRightSideBoundaryVector(startTime) - computeLeftSideBoundaryVector(startTime + timeStepLength));
 
             result = NSharp.LinearAlgebra.GaußEliminationSolver.Solve((Matrix)leftMatrix.Clone(), tempVector);
-          
+
             //Restliche Berechnungen
             for (int k = 1; k < M; k++)
             {
