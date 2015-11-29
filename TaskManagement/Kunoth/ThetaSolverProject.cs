@@ -12,26 +12,15 @@ namespace TaskManagement.Kunoth
     {
         public void evaluate()
         {
-            //ThetaSolver ts = new ThetaSolver();
-            //double leftBoudary = -Math.PI;
-            //double rightBoundary = -leftBoudary;
-            //double timeBoundary = 1.0;
-            //int M = 32;
-            //int N = 32;
-            //double theta = 0.50;
+            evaluateEOC();
+        }
 
-            //Vector res = ts.SolvePDE(initalFunction, leftBoundaryFunction, rightBoundaryFunction, leftBoudary, rightBoundary, timeBoundary, M, N, theta);
-            //Vector exact = evaluateExactSolution(timeBoundary, leftBoudary, rightBoundary, N);
-            ////Console.WriteLine(res.toString(15));
-
-            //double absErr =  NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm((res - exact), (res - exact));
-            //double relErr = absErr/NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm(exact, exact);
-            //Console.WriteLine(relErr);
-
-            double[] relError = computeRelativeError(5);
+        private void evaluateEOC()
+        {
+            double[] relError = computeRelativeError(6);
             double[] EOC = computeEOC(relError);
             Console.Write("Rel Error:");
-            for(int i = 0; i < relError.Length; i++)
+            for (int i = 0; i < relError.Length; i++)
             {
                 Console.WriteLine(relError[i]);
             }
@@ -57,6 +46,7 @@ namespace TaskManagement.Kunoth
                 Vector exact;
                 Vector res;
 
+
                 for (int j = 1; j <= maxPow; j++) {
                     M = (int)Math.Pow(2.0, j);
                     N = M;
@@ -66,6 +56,7 @@ namespace TaskManagement.Kunoth
 
                     //Fehler berechnen
                     double absErr = NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm((res - exact), (res - exact));
+                    Console.WriteLine(" Abs Error: j:" + absErr);
                     relError[j - 1] = absErr / NSharp.Measures.MeasureFunctions.CalculateDiscreteNorm(exact, exact);
                 }
 
@@ -75,9 +66,9 @@ namespace TaskManagement.Kunoth
         private double[] computeEOC(double[] relError)
         {
             double[] EOC = new double[relError.Length - 1];
-            for (int j = 0; j < EOC.Length - 1; j++)
+            for (int j = 0; j < EOC.Length ; j++)
             {
-                EOC[j] = Math.Log(relError[j] / relError[j + 1]) / Math.Log(2.0);
+                EOC[j] = Math.Log(relError[j] / relError[j+1]) / Math.Log(2.0);
             }
             return EOC;
         }
@@ -94,6 +85,19 @@ namespace TaskManagement.Kunoth
             }
 
             return evaluation;
+        }
+
+        private static Vector computeSpaceDiscretationVector(double leftSpaceBoundary, double rightSpaceBoundary, int N)
+        {
+            Vector spaceDiscretization = new Vector(N - 1);
+            double spaceStep = (Math.Abs(leftSpaceBoundary) + Math.Abs(leftSpaceBoundary)) / (double)N;
+            for (int i = 0; i < N-1; i++)
+            {
+                double spaceLocation = leftSpaceBoundary + (i + 1) * spaceStep;
+                spaceDiscretization[i] = spaceLocation;
+            }
+
+            return spaceDiscretization;
         }
 
         private static double exactSolution(double time, double space)

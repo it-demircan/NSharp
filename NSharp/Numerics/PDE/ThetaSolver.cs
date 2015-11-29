@@ -53,22 +53,22 @@ namespace NSharp.Numerics.PDE
             Matrix rightMatrix = composeRightMatrix();
             Vector initalSolutionVector = evaluateInitialFunction(spaceStepLength);
 
+            
             //Hier könnte man die LU Zerlegung verwendung, da die Linke Matrix sich nicht verändert.
             //Matrix[] decompsedMatrix = NSharp.LinearAlgebra.Decomposer.Decompose(leftMatrix, NSharp.LinearAlgebra.DecomposerType.LU);
-
 
             //#1 Berechnung mit Anfangsbedingung
             Vector tempVector = rightMatrix * initalSolutionVector;
             tempVector = tempVector + (computeRightSideBoundaryVector(startTime) - computeLeftSideBoundaryVector(startTime + timeStepLength));
 
-            result = NSharp.LinearAlgebra.GaußEliminationSolver.Solve(leftMatrix, tempVector);
-           
+            result = NSharp.LinearAlgebra.GaußEliminationSolver.Solve((Matrix)leftMatrix.Clone(), tempVector);
+
             //Restliche Berechnungen
             for (int k = 1; k < M; k++)
             {
                 tempVector = rightMatrix * result;
                 tempVector = tempVector + (computeRightSideBoundaryVector(startTime+timeStepLength*k) - computeLeftSideBoundaryVector(startTime + timeStepLength*(k+1.0)));
-                result = NSharp.LinearAlgebra.GaußEliminationSolver.Solve(leftMatrix, tempVector);
+                result = NSharp.LinearAlgebra.GaußEliminationSolver.Solve((Matrix)leftMatrix.Clone(), tempVector);
             }
             return result;
         }
