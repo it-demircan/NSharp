@@ -24,7 +24,8 @@ namespace NSharp.Numerics.DG
         Matrix differentialMatrix;
         Matrix B;
 
-        Matrix tempMatrix;
+        Matrix volumeMatrix;
+        Matrix surfaceMatrix;
 
         double numFluxLeft, numFluxRight;
 
@@ -68,13 +69,12 @@ namespace NSharp.Numerics.DG
                 invMassMatrix[i,i] = 1.0 / massMatrix[i,i];
 
             differentialMatrix = interpolator.computeLagrangePolynomeDerivativeMatrix();
-
-            tempMatrix = (!differentialMatrix) * massMatrix;
-
-            //Oberflächenmatrix
             B = new Matrix(N + 1, N + 1);
             B[0, 0] = -1.0;
             B[N, N] = 1.0;
+
+            volumeMatrix = invMassMatrix*(!differentialMatrix) * massMatrix;
+            surfaceMatrix = invMassMatrix * B;    
         }
            
         public void UpdateSolution(Vector solution)
@@ -93,12 +93,6 @@ namespace NSharp.Numerics.DG
             numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, solution[0]);
             numFluxRight = numericalFluxFunction(solution[nodes.Length - 1], RightNeighbour.LeftBorderValue);
 
-
-            for (int i = 0; i < nodes.Length; i++)
-            {
-                fluxEvaluation[i] = fluxFunction(solution[i]);
-            }
-
             Vector volume = new Vector(N+1);
             Vector surface = new Vector(N+1);
 
@@ -106,11 +100,12 @@ namespace NSharp.Numerics.DG
             surface[N] = numFluxRight;
 
             for (int i = 0; i <= N ; i++)
-                volume[i] = fluxEvaluation[i];
+                volume[i] = fluxFunction(solution[i]);
 
             //timeDerivative = invMassMatrix * ( (((!differentialMatrix) * massMatrix) * volume) - (B * surface));
 
-            timeDerivative = invMassMatrix * ((tempMatrix* volume) - (B * surface));
+            //timeDerivative = invMassMatrix * ((volumeMatrix* volume) - (B * surface));
+            timeDerivative = volumeMatrix * volume - surfaceMatrix * surface;
 
             timeDerivative = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivative);
             timeDerivative += ComputeInhomogenuousPart(time);
