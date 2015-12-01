@@ -12,13 +12,11 @@ namespace NSharp.Numerics.DG
     {
         public DGElement LeftNeighbour, RightNeighbour;
         double leftSpaceBoundary, rightSpaceBoundary;
-        double spaceTransformationFactor;
-        Vector gaussLobattoNodes, gaussLobattoWeights;
+        Vector nodes, integrationWeights;
 
         LagrangeInterpolator interpolator;
-        int N; //Polynom order
+        int N; //Polynomgrad
         Vector solution;
-        Vector timeDerivative;
         Vector fluxEvaluation;
 
         Matrix massMatrix;
@@ -26,124 +24,122 @@ namespace NSharp.Numerics.DG
         Matrix differentialMatrix;
         Matrix B;
 
+        Matrix tempMatrix;
+
         double numFluxLeft, numFluxRight;
 
-        Func<double, double> leftBoundaryFunction;
-        Func<double, double> rightBoundaryFunction;
         Func<double, double, double> numericalFluxFunction;
         Func<double, double, double> inhomogenuousFunction;
         Func<double, double> fluxFunction;
+        Func<double, double> initialFunction;
 
 
         public double LeftBorderValue{ get; set; }
         public double RightBorderValue { get; set; }
 
-        public DGElement(double leftSpaceBoundary,double rightSpaceBoundary, int N, Func<double,double> fluxFunction, Func<double, double> leftBoundaryFunction, Func<double, double> rightBoundaryFunction, Func<double, double, double> numericalFluxFunction, Func<double, double, double> inhomogenuousFunction)
+        public DGElement(double leftSpaceBoundary,double rightSpaceBoundary, int polynomOrder, Func<double,double> fluxFunction, Func<double, double, double> numericalFluxFunction, Func<double, double, double> inhomogenuousFunction, Func<double, double> initialFunction)
         {
-            this.leftBoundaryFunction = leftBoundaryFunction;
-            this.rightBoundaryFunction = rightBoundaryFunction;
-            this.numericalFluxFunction = numericalFluxFunction;
-            this.inhomogenuousFunction = inhomogenuousFunction;
-            this.fluxFunction = fluxFunction;
             this.leftSpaceBoundary = leftSpaceBoundary;
             this.rightSpaceBoundary = rightSpaceBoundary;
-            this.N = N;
+            this.N = polynomOrder;
+            this.fluxFunction = fluxFunction;
+            this.numericalFluxFunction = numericalFluxFunction;
+            this.inhomogenuousFunction = inhomogenuousFunction;
+            this.initialFunction = initialFunction;
+
+            InitializeDGWithGaussLobattoNodes();
         }
 
-        public void Initialize(Vector startSolution)
+        private void InitializeDGWithGaussLobattoNodes()
         {
-            solution = startSolution;
-            timeDerivative = new Vector(N + 1);
             fluxEvaluation = new Vector(N + 1);
             
-            LegendrePolynomEvaluator.computeLegendreGaussNodesAndWeights(N, out gaussLobattoNodes, out gaussLobattoWeights);
+            LegendrePolynomEvaluator.computeGaussLobattoNodesAndWeights(N, out nodes, out integrationWeights);
 
-            interpolator = new LagrangeInterpolator(gaussLobattoNodes);
+            solution = ComputeStartSolution() ;
+            Console.Write(solution.toString(15));
+            this.UpdateBorderValues();
 
-            massMatrix = IntegrationToolbox.generateMassMatrix(gaussLobattoWeights);
+            interpolator = new LagrangeInterpolator(nodes);
+            massMatrix = IntegrationToolbox.generateMassMatrix(integrationWeights);
 
             invMassMatrix = new Matrix(N + 1, N+1);
             for (int i = 0; i < N + 1; i++)
                 invMassMatrix[i,i] = 1.0 / massMatrix[i,i];
 
             differentialMatrix = interpolator.computeLagrangePolynomeDerivativeMatrix();
-            
-            //Randauswertung
+
+            tempMatrix = (!differentialMatrix) * massMatrix;
+
+            //Oberflächenmatrix
             B = new Matrix(N + 1, N + 1);
             B[0, 0] = -1.0;
             B[N, N] = 1.0;
         }
-
-        public void updateSolution(double t, double timeStep)
+           
+        public void UpdateSolution(Vector solution)
         {
-            List<Func<double, double, double>> mySystem = new List<Func<double, double, double>>();
-            mySystem.Add(timeDerivativeMapping);
-            OrdinaryPartialEquationsSolver.OrdinaryDifferentialEquation myODE = new OrdinaryPartialEquationsSolver.OrdinaryDifferentialEquation(mySystem);
-
-            OrdinaryPartialEquationsSolver.IODESolver odeSolver = new OrdinaryPartialEquationsSolver.RungeKuttaSolver();
-            solution = odeSolver.computeSolutionForNextStep(solution, myODE, t, t + timeStep);
+            this.solution = solution;
+        }     
+        public void UpdateBorderValues()
+        {
+            this.LeftBorderValue = solution[0];
+            this.RightBorderValue = solution[N];
         }
 
-        private void evaluateTimeDerivative(double time)
-        {           
-            //Auswertung an numerischen Flüssen bestimmen
-            if (LeftNeighbour == null)
-            {
-                double left = leftBoundaryFunction(time);
-                numFluxLeft = numericalFluxFunction(left, solution[0]);
-            }
-            else
-            {
-                numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, solution[0]);
-            }
-
-            if (RightNeighbour == null)
-            {
-                numFluxRight = numericalFluxFunction(solution[gaussLobattoNodes.Length - 1], rightBoundaryFunction(time));
-            }
-            else
-            {
-                double right = solution[gaussLobattoNodes.Length - 1];
-                numFluxRight = numericalFluxFunction(right, RightNeighbour.LeftBorderValue);
-            }
+        public Vector EvaluateTimeDerivative(double time)
+        {
+            Vector timeDerivative;      
+            numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, solution[0]);
+            numFluxRight = numericalFluxFunction(solution[nodes.Length - 1], RightNeighbour.LeftBorderValue);
 
 
-            for (int i = 0; i < gaussLobattoNodes.Length; i++)
+            for (int i = 0; i < nodes.Length; i++)
             {
                 fluxEvaluation[i] = fluxFunction(solution[i]);
             }
+
             Vector volume = new Vector(N+1);
             Vector surface = new Vector(N+1);
 
-            volume[0] = fluxEvaluation[0];//numFluxLeft;
             surface[0] = numFluxLeft;
-
-            volume[N] = fluxEvaluation[N];// numFluxRight;
             surface[N] = numFluxRight;
 
-
-            for (int i = 1; i < N ; i++)
+            for (int i = 0; i <= N ; i++)
                 volume[i] = fluxEvaluation[i];
 
-            timeDerivative = invMassMatrix * ((((!differentialMatrix) * massMatrix) * volume) - (B * surface));
+            //timeDerivative = invMassMatrix * ( (((!differentialMatrix) * massMatrix) * volume) - (B * surface));
+
+            timeDerivative = invMassMatrix * ((tempMatrix* volume) - (B * surface));
+
             timeDerivative = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivative);
-            timeDerivative += computeInhomogenuousPart(time);
+            timeDerivative += ComputeInhomogenuousPart(time);
+            return timeDerivative;
         }
 
-        private Vector computeInhomogenuousPart(double time)
+        private Vector ComputeInhomogenuousPart(double time)
         {
             Vector inhomoPart = new Vector(N + 1);
             for (int i = 0; i < N + 1; i++)
-                inhomoPart[i] = inhomogenuousFunction(gaussLobattoNodes[i], time);
+                inhomoPart[i] = inhomogenuousFunction(nodes[i], time);
 
             return inhomoPart;
         }
 
-        public Vector getOriginNodes()
+        private Vector ComputeStartSolution()
         {
-            Vector originNodes = new Vector(gaussLobattoNodes.Length);
-            for (int i = 0; i < gaussLobattoNodes.Length; i++)
-                originNodes[i] = MapToOriginSpace(gaussLobattoNodes[i]);
+            Vector startSolution = new Vector(N + 1);
+            for(int i = 0; i <= N; i++)
+            {
+                startSolution[i] = initialFunction(MapToOriginSpace(nodes[i]));
+            }
+            return startSolution;
+        }
+        public Vector GetOriginNodes()
+        {
+            Vector originNodes = new Vector(nodes.Length);
+            for (int i = 0; i < nodes.Length; i++)
+                originNodes[i] = MapToOriginSpace(nodes[i]);
             return originNodes;
         }
 
@@ -157,9 +153,21 @@ namespace NSharp.Numerics.DG
             return (2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * (x - leftSpaceBoundary) - 1.0;
         }
 
-        private double timeDerivativeMapping(double u, double time)
+        public Vector GetSolution()
         {
-            return u;
+            return solution;
+        }
+        /**
+            Periodic Boundary
+        **/
+        private double LeftPeriodicBoundary(double time)
+        {
+            return LeftNeighbour.RightBorderValue;
+        }
+
+        private double RightPeriodicBoundary(double time)
+        {
+            return RightNeighbour.LeftBorderValue;
         }
     }
 }

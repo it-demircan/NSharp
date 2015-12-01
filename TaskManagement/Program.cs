@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TaskManagement.SecondProject;
-using TaskManagement.Kunoth;
 
 namespace TaskManagement
 {
@@ -14,8 +13,8 @@ namespace TaskManagement
         {
             //TaskTwo tt = new TaskTwo();
             //tt.evaluate();
-            ThetaSolverProject tsp = new ThetaSolverProject();
-            tsp.evaluate();
+            TaskThree three = new TaskThree();
+            three.evaluate();
             Console.ReadKey();
         }
     }
