@@ -10,13 +10,13 @@ namespace TaskManagement.SecondProject
 {
     class TaskThree
     {
-        static int[] elementNumber  = {8,16,32};
-        static int[] polynomOrders = {3,7};
+        static int[] elementNumber  = {2,4,8,16};
+        static int[] polynomOrders = {7};
         static IntegrationMode myMode = IntegrationMode.GaussLobatto;
         static double leftSpaceBorder = 0.0;
         static double rightSpaceBorder = 1.0;
         static double endTime = 1.0;
-        static double timeStep = 0.001;
+        static double timeStep = 0.0001;
 
         public void evaluate()
         {

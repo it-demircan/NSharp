@@ -104,6 +104,7 @@ namespace NSharp.Numerics.DG
             //    for (int i = 0; i < elements[k].GetSolution().Length; i++)
             //        Console.WriteLine(elements[k].GetSolution()[i]);
             //}
+            //return computeError(endTime);
             return computeError(endTime);
         }
 
@@ -124,9 +125,24 @@ namespace NSharp.Numerics.DG
                 {
                     tempErr = interpolator.evaluateLagrangeRepresentation(errorNodes[m], elements[i].GetSolution());
                     double trafoSpace = elements[i].MapToOriginSpace(errorNodes[m]);
-                    tempErr = (ExactSolution(trafoSpace, endTime) - tempErr) * errorWeights[m]* (ExactSolution(trafoSpace, endTime) - tempErr) * ((elements[i].rightSpaceBoundary - elements[i].leftSpaceBoundary) / 2.0);
+                    tempErr = (ExactSolution(trafoSpace, endTime) - tempErr)* (ExactSolution(trafoSpace, endTime) - tempErr) * errorWeights[m] * ((elements[i].rightSpaceBoundary - elements[i].leftSpaceBoundary) / 2.0);
                     error += tempErr;
                 }         
+            }
+            return Math.Sqrt(error);
+        }
+
+        public double computeErrorSecond(double endTime)
+        {
+            Vector numSolution, exactSolution ;
+
+            double error = 0.0;
+
+            for (int i = 0; i < elements.Length; i++)
+            {
+                numSolution = elements[i].GetSolution();
+                exactSolution = computeExactSolution(elements[i].GetOriginNodes(), endTime);
+                error+=(exactSolution - numSolution)*(exactSolution - numSolution);
             }
             return Math.Sqrt(error);
         }
@@ -157,7 +173,8 @@ namespace NSharp.Numerics.DG
 
         private double NumFlux(double left, double right)
         {
-            return 1.0 / 2.0 * (FluxFunction(left) + FluxFunction(right)) - 1.0 / 12.0 *((right - left) * (right - left));
+            //return 1.0 / 2.0 * (FluxFunction(left) + FluxFunction(right)) - 1.0 / 12.0 *((right - left) * (right - left));
+            return FluxFunction(left);
         }
 
 
