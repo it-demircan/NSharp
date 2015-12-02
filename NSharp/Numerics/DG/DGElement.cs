@@ -8,11 +8,16 @@ using System.Threading.Tasks;
 
 namespace NSharp.Numerics.DG
 {
+    public enum IntegrationMode
+    {
+        GaussLegendre, GaussLobatto
+    }
     class DGElement
     {
         public DGElement LeftNeighbour, RightNeighbour;
-        double leftSpaceBoundary, rightSpaceBoundary;
-        Vector nodes, integrationWeights;
+        public double leftSpaceBoundary, rightSpaceBoundary;
+        public Vector nodes, integrationWeights;
+        IntegrationMode myIntegrationMode;
 
         LagrangeInterpolator interpolator;
         int N; //Polynomgrad
@@ -23,6 +28,8 @@ namespace NSharp.Numerics.DG
         Matrix invMassMatrix;
         Matrix differentialMatrix;
         Matrix B;
+        Vector LeftBoarderInterpolation;
+        Vector RightBoarderInterpolation;
 
         Matrix volumeMatrix;
         Matrix surfaceMatrix;
@@ -38,8 +45,9 @@ namespace NSharp.Numerics.DG
         public double LeftBorderValue{ get; set; }
         public double RightBorderValue { get; set; }
 
-        public DGElement(double leftSpaceBoundary,double rightSpaceBoundary, int polynomOrder, Func<double,double> fluxFunction, Func<double, double, double> numericalFluxFunction, Func<double, double, double> inhomogenuousFunction, Func<double, double> initialFunction)
+        public DGElement(IntegrationMode mode,double leftSpaceBoundary,double rightSpaceBoundary, int polynomOrder, Func<double,double> fluxFunction, Func<double, double, double> numericalFluxFunction, Func<double, double, double> inhomogenuousFunction, Func<double, double> initialFunction)
         {
+            myIntegrationMode = mode;
             this.leftSpaceBoundary = leftSpaceBoundary;
             this.rightSpaceBoundary = rightSpaceBoundary;
             this.N = polynomOrder;
@@ -48,7 +56,24 @@ namespace NSharp.Numerics.DG
             this.inhomogenuousFunction = inhomogenuousFunction;
             this.initialFunction = initialFunction;
 
-            InitializeDGWithGaussLobattoNodes();
+            Initialize();
+        }
+
+        private void Initialize()
+        {
+            if (myIntegrationMode == IntegrationMode.GaussLobatto)
+                InitializeDGWithGaussLobattoNodes();
+            else if (myIntegrationMode == IntegrationMode.GaussLegendre)
+                InitializeDGWithGaussNodes();
+        }
+
+        public Vector EvaluateTimeDerivative(double time)
+        {
+            if (myIntegrationMode == IntegrationMode.GaussLobatto)
+                return EvaluateTimeDerivativeGaussLobatto(time);
+            else if (myIntegrationMode == IntegrationMode.GaussLegendre)
+                return EvaluateTimeDerivativeGaussLegendre(time);
+            return null;
         }
 
         private void InitializeDGWithGaussLobattoNodes()
@@ -58,7 +83,6 @@ namespace NSharp.Numerics.DG
             LegendrePolynomEvaluator.computeGaussLobattoNodesAndWeights(N, out nodes, out integrationWeights);
 
             solution = ComputeStartSolution() ;
-            Console.Write(solution.toString(15));
             this.UpdateBorderValues();
 
             interpolator = new LagrangeInterpolator(nodes);
@@ -76,22 +100,44 @@ namespace NSharp.Numerics.DG
             volumeMatrix = invMassMatrix*(!differentialMatrix) * massMatrix;
             surfaceMatrix = invMassMatrix * B;    
         }
+
+        private void InitializeDGWithGaussNodes()
+        {
+            fluxEvaluation = new Vector(N + 1);
+
+            LegendrePolynomEvaluator.computeLegendreGaussNodesAndWeights(N, out nodes, out integrationWeights);
+
+            solution = ComputeStartSolution();
            
-        public void UpdateSolution(Vector solution)
-        {
-            this.solution = solution;
-        }     
-        public void UpdateBorderValues()
-        {
-            this.LeftBorderValue = solution[0];
-            this.RightBorderValue = solution[N];
+            interpolator = new LagrangeInterpolator(nodes);
+            massMatrix = IntegrationToolbox.generateMassMatrix(integrationWeights);
+            this.UpdateBorderValues();
+
+            invMassMatrix = new Matrix(N + 1, N + 1);
+            for (int i = 0; i < N + 1; i++)
+                invMassMatrix[i, i] = 1.0 / massMatrix[i, i];
+
+            differentialMatrix = interpolator.computeLagrangePolynomeDerivativeMatrix();
+
+            LeftBoarderInterpolation = new Vector(nodes.Length);
+            RightBoarderInterpolation = new Vector(nodes.Length);
+
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                LeftBoarderInterpolation[i] = interpolator.evaluateLagrangePolynome(-1.0, i);
+                RightBoarderInterpolation[i] = interpolator.evaluateLagrangePolynome(1.0, i);
+            }
+
+            volumeMatrix = invMassMatrix * (!differentialMatrix) * massMatrix;
+            LeftBoarderInterpolation = invMassMatrix * LeftBoarderInterpolation;
+            RightBoarderInterpolation = invMassMatrix * RightBoarderInterpolation;
         }
 
-        public Vector EvaluateTimeDerivative(double time)
+        public Vector EvaluateTimeDerivativeGaussLegendre(double time)
         {
             Vector timeDerivative;      
-            numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, solution[0]);
-            numFluxRight = numericalFluxFunction(solution[nodes.Length - 1], RightNeighbour.LeftBorderValue);
+            numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, this.LeftBorderValue);
+            numFluxRight = numericalFluxFunction(this.RightBorderValue, RightNeighbour.LeftBorderValue);
 
             Vector volume = new Vector(N+1);
             Vector surface = new Vector(N+1);
@@ -102,14 +148,53 @@ namespace NSharp.Numerics.DG
             for (int i = 0; i <= N ; i++)
                 volume[i] = fluxFunction(solution[i]);
 
-            //timeDerivative = invMassMatrix * ( (((!differentialMatrix) * massMatrix) * volume) - (B * surface));
+            timeDerivative = volumeMatrix * volume-(Vector)(numFluxRight*RightBoarderInterpolation) + (Vector)(numFluxLeft*LeftBoarderInterpolation);
+            timeDerivative = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivative);
+            timeDerivative += ComputeInhomogenuousPart(time);
+            return timeDerivative;
+        }
 
-            //timeDerivative = invMassMatrix * ((volumeMatrix* volume) - (B * surface));
+        public Vector EvaluateTimeDerivativeGaussLobatto(double time)
+        {     
+            Vector timeDerivative;
+            numFluxLeft = numericalFluxFunction(LeftNeighbour.RightBorderValue, this.LeftBorderValue);
+            numFluxRight = numericalFluxFunction(this.RightBorderValue, RightNeighbour.LeftBorderValue);
+
+            Vector volume = new Vector(N + 1);
+            Vector surface = new Vector(N + 1);
+
+            surface[0] = numFluxLeft;
+            surface[N] = numFluxRight;
+
+            for (int i = 0; i <= N; i++)
+                volume[i] = fluxFunction(solution[i]);
+
             timeDerivative = volumeMatrix * volume - surfaceMatrix * surface;
 
             timeDerivative = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivative);
             timeDerivative += ComputeInhomogenuousPart(time);
             return timeDerivative;
+        }
+
+
+
+        public void UpdateSolution(Vector solution)
+        {
+            this.solution = solution;
+        }
+
+        public void UpdateBorderValues()
+        {
+            if (myIntegrationMode == IntegrationMode.GaussLobatto)
+            {
+                this.LeftBorderValue = solution[0];
+                this.RightBorderValue = solution[N];
+            }
+            else
+            {
+                this.LeftBorderValue = interpolator.evaluateLagrangeRepresentation(-1.0, solution);
+                this.RightBorderValue = interpolator.evaluateLagrangeRepresentation(1.0, solution);
+            }
         }
 
         private Vector ComputeInhomogenuousPart(double time)
@@ -138,7 +223,7 @@ namespace NSharp.Numerics.DG
             return originNodes;
         }
 
-        private double MapToOriginSpace(double x)
+        public double MapToOriginSpace(double x)
         {
             return leftSpaceBoundary + ((x + 1.0) / 2.0) * (rightSpaceBoundary - leftSpaceBoundary);
         }
@@ -155,6 +240,7 @@ namespace NSharp.Numerics.DG
         /**
             Periodic Boundary
         **/
+
         private double LeftPeriodicBoundary(double time)
         {
             return LeftNeighbour.RightBorderValue;

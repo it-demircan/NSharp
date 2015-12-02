@@ -1,4 +1,5 @@
-﻿using Structures;
+﻿using NSharp.Numerics.Interpolation;
+using Structures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,7 @@ namespace NSharp.Numerics.DG
         DGElement[] elements;
         int polynomOrder; //N
 
-        public void createDGElements(int numberOfDGElements, int polynomOrder, double leftBoundary, double rightBoundary)
+        public void createDGElements(int numberOfDGElements,IntegrationMode mode, int polynomOrder, double leftBoundary, double rightBoundary)
         {
             this.polynomOrder = polynomOrder;
             elements = new DGElement[numberOfDGElements];
@@ -40,7 +41,7 @@ namespace NSharp.Numerics.DG
             {
                 double leftSpaceBorder = leftBoundary + (double)i * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
                 double rightSpaceBorder = leftBoundary + (double)(i + 1) * (rightBoundary-leftBoundary) / (double)numberOfDGElements;
-                elements[i] = new DGElement(leftSpaceBorder, rightSpaceBorder, polynomOrder, FluxFunction, NumFlux, InhomogenuousPart, InitialFunction);
+                elements[i] = new DGElement(mode,leftSpaceBorder, rightSpaceBorder, polynomOrder, FluxFunction, NumFlux, InhomogenuousPart, InitialFunction);
 
                 if (i > 0)
                 {
@@ -63,13 +64,15 @@ namespace NSharp.Numerics.DG
         }
 
 
-        public void computeSolution(double endTime, double timeStep)
+        public double computeSolution(double endTime, double timeStep)
         {
             double recentTime = 0.0;
             Vector[] tempTimeDerivaties = new Vector[elements.Length];
 
-            do
+            while (recentTime < endTime)
             {
+                if (recentTime + timeStep > endTime)
+                    timeStep = endTime - recentTime;
                 //Vektoren zurüksetzen
                 for (int i = 0; i < elements.Length; i++)
                     tempTimeDerivaties[i] = new Vector(polynomOrder+1);
@@ -95,48 +98,51 @@ namespace NSharp.Numerics.DG
 
                 recentTime += timeStep;
             }
-            while (recentTime < endTime);
 
-            /**
-                Hier koennte man das letzte Stuck noch erganzen.
-            **/
-            //recentTime -= timeStep;
-
-            //timeStep = endTime - recentTime;
-            ////Vektoren zurüksetzen
-            //for (int i = 0; i < elements.Length; i++)
-            //    tempTimeDerivaties[i] = new Vector(polynomOrder + 1);
-
-
-            //for (int k = 0; k < 5; k++)
+            //for (int k = 0; k < elements.Length; k++)
             //{
-
-            //    for (int i = 0; i < elements.Length; i++)
-            //    {
-            //        Vector solution = elements[i].getSolution();
-            //        double nextTimeStep = recentTime + B[k] * timeStep;
-            //        tempTimeDerivaties[i] = (Vector)(A[k] * tempTimeDerivaties[i]) + elements[i].EvaluateTimeDerivative(nextTimeStep);
-            //        solution = solution + (Vector)(C[k] * timeStep * tempTimeDerivaties[i]);
-            //        elements[i].updateSolution(solution);
-            //    }
-
-            //    for (int i = 0; i < elements.Length; i++)
-            //    {
-            //        elements[i].UpdateBorderValues();
-            //    }
+            //    for (int i = 0; i < elements[k].GetSolution().Length; i++)
+            //        Console.WriteLine(elements[k].GetSolution()[i]);
             //}
+            return computeError(endTime);
+        }
 
-            for (int k = 0; k < elements.Length; k++)
+
+        //Berechnet den L2 Fehler indem die Lösung mit 2N Polynomen approximiert wird.
+        public double computeError(double endTime)
+        {
+            Vector errorNodes, errorWeights;
+            LegendrePolynomEvaluator.computeLegendreGaussNodesAndWeights(2*polynomOrder, out errorNodes, out errorWeights);
+            LagrangeInterpolator interpolator = new LagrangeInterpolator(elements[0].nodes);
+
+            double error = 0.0;
+            double tempErr = 0.0;
+
+            for (int i = 0; i < elements.Length; i++)
             {
-                for (int i = 0; i < elements[k].GetSolution().Length; i++)
-                    Console.WriteLine(elements[k].GetSolution()[i]);
+                for (int m = 0; m < errorNodes.Length; m++)
+                {
+                    tempErr = interpolator.evaluateLagrangeRepresentation(errorNodes[m], elements[i].GetSolution());
+                    double trafoSpace = elements[i].MapToOriginSpace(errorNodes[m]);
+                    tempErr = (ExactSolution(trafoSpace, endTime) - tempErr) * errorWeights[m]* (ExactSolution(trafoSpace, endTime) - tempErr) * ((elements[i].rightSpaceBoundary - elements[i].leftSpaceBoundary) / 2.0);
+                    error += tempErr;
+                }         
             }
+            return Math.Sqrt(error);
+        }
+
+        public Vector computeExactSolution(Vector nodes, double time)
+        {
+            Vector exactSolution = new Vector(nodes.Length);
+            for (int i = 0; i < nodes.Length; i++)
+                exactSolution[i] = ExactSolution(nodes[i], time);
+            return exactSolution;
         }
 
         private double InitialFunction(double space)
         {
             //return Math.Exp(-Math.Log(2.0) * (space + 1.0) * (space + 1.0) / (0.2 * 0.2));
-            return Math.Sin(Math.PI*space);
+            return Math.Sin(2.0*Math.PI*space);
         }
 
         private double InhomogenuousPart(double space, double time)
@@ -146,12 +152,18 @@ namespace NSharp.Numerics.DG
 
         private double FluxFunction(double u)
         {
-            return 1.0 * u;
+            return 2.0 * u;
         }
 
         private double NumFlux(double left, double right)
         {
             return 1.0 / 2.0 * (FluxFunction(left) + FluxFunction(right)) - 1.0 / 12.0 *((right - left) * (right - left));
+        }
+
+
+        private double ExactSolution(double space, double time) 
+        {
+            return Math.Sin(2.0*Math.PI * (space-2.0*time));
         }
 
     }
