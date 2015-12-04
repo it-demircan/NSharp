@@ -32,10 +32,16 @@ namespace NSharp.Numerics.DG
 
         DGElement[] elements;
         int polynomOrder; //N
+        double veloCity = 2.0;
+
+        IntegrationMode myMode;
+        double spaceLengthInElements;
 
         public void createDGElements(int numberOfDGElements,IntegrationMode mode, int polynomOrder, double leftBoundary, double rightBoundary)
         {
             this.polynomOrder = polynomOrder;
+            myMode= mode;
+            spaceLengthInElements = (rightBoundary-leftBoundary)/(double)numberOfDGElements;
             elements = new DGElement[numberOfDGElements];
             for (int i = 0; i<numberOfDGElements; i++)
             {
@@ -108,6 +114,95 @@ namespace NSharp.Numerics.DG
         }
 
 
+        public double ComputeTimeStep(double cfl){
+            return myMode == IntegrationMode.GaussLobatto ? cfl * ComputeSpaceLengthInElement()  / veloCity : cfl * ComputeSpaceLengthInElement() / veloCity;
+        }
+
+        public Matrix ConstructDGLMatrix()
+        {
+            return myMode == IntegrationMode.GaussLobatto ? ConstructDGLMatrixWithGaussLobattoNodes() : ConstructDGLMatrixWithGaussNodes();
+        }
+
+        public Matrix ConstructDGLMatrixWithGaussLobattoNodes()
+        {
+            Matrix A = new Matrix((polynomOrder+1) * elements.Length, (polynomOrder+1)  * elements.Length);
+            Matrix S = elements[0].GetSMatrix();
+            Matrix D = elements[0].GetDifferentialMatrix();
+            Matrix E_0N = new Matrix((polynomOrder + 1), (polynomOrder + 1));
+            E_0N[0, polynomOrder] = 1.0;
+            Matrix E_NN = new Matrix((polynomOrder + 1), (polynomOrder + 1));
+            E_0N[polynomOrder, polynomOrder] = 1.0;
+
+            Matrix MainDiagonal = -1.0*S + D + S * E_NN;
+            Matrix LowerDiagonal = S * E_0N;
+
+            for (int i = 0; i < elements.Length-1; i++)
+            {
+                A.InjectMatrixAtPosition(MainDiagonal, i * (polynomOrder + 1), i * (polynomOrder + 1));
+                A.InjectMatrixAtPosition(LowerDiagonal, (i + 1) * (polynomOrder + 1), i * (polynomOrder + 1));
+            }
+            A.InjectMatrixAtPosition(MainDiagonal, (elements.Length - 1) * (polynomOrder + 1), (elements.Length - 1) * (polynomOrder + 1));
+            A.InjectMatrixAtPosition(LowerDiagonal, 0, (elements.Length - 1) * (polynomOrder + 1));
+
+            A = -1.0 * veloCity / (elements[0].GetSpaceLength() / 2.0) * A;
+            return A;
+        }
+
+        public Matrix ConstructDGLMatrixWithGaussNodes()
+        {
+            Matrix A = new Matrix((polynomOrder + 1) * elements.Length, (polynomOrder + 1) * elements.Length);
+            Matrix invMass = elements[0].GetInverseMassMatrix();
+            Matrix massMatrix = elements[0].GetMassMatrix();
+            Matrix D = elements[0].GetDifferentialMatrix();
+
+            Matrix L2 = elements[0].GetL2Matrix();
+            Matrix L1 = elements[0].GetL1Matrix();
+            Matrix B = elements[0].GetBMatrix();
+
+            Matrix MainDiagonal = -1.0*massMatrix * (!D) * massMatrix + invMass * B * L2;
+            Matrix LowerDiagonal = invMass * B * L1;
+
+            for (int i = 0; i < elements.Length - 1; i++)
+            {
+                A.InjectMatrixAtPosition(MainDiagonal, i * (polynomOrder + 1), i * (polynomOrder + 1));
+                A.InjectMatrixAtPosition(LowerDiagonal, (i + 1) * (polynomOrder + 1), i * (polynomOrder + 1));
+            }
+            A.InjectMatrixAtPosition(MainDiagonal, (elements.Length - 1) * (polynomOrder + 1), (elements.Length - 1) * (polynomOrder + 1));
+            A.InjectMatrixAtPosition(LowerDiagonal, 0, (elements.Length - 1) * (polynomOrder + 1));
+
+            A = -1.0 * veloCity / (elements[0].GetSpaceLength() / 2.0) * A;
+
+            return A;
+        }
+
+
+        public Vector getCompleteSolution()
+        {
+            Vector solution = new Vector(elements.Length * (polynomOrder + 1));
+            for (int i = 0; i < elements.Length; i++)
+            {
+                for (int k = 0; k <= polynomOrder; k++)
+                    solution[i * (polynomOrder + 1) + k] = elements[i].GetSolution()[k];
+            }
+
+            return solution;
+        }
+        
+        public Vector getOriginSpace()
+        {
+            Vector space = new Vector(elements.Length * (polynomOrder + 1));
+            for (int i = 0; i < elements.Length; i++)
+            {
+                for (int k = 0; k <= polynomOrder; k++)
+                    space[i * (polynomOrder + 1) + k] = elements[i].GetOriginNodes()[k];
+            }
+
+            return space;
+        }
+        public double ComputeSpaceLengthInElement()
+        {
+            return myMode == IntegrationMode.GaussLobatto ? spaceLengthInElements / (double)polynomOrder : spaceLengthInElements / ((double)polynomOrder+2);
+        }
         //Berechnet den L2 Fehler indem die Lösung mit 2N Polynomen approximiert wird.
         public double computeError(double endTime)
         {
@@ -141,8 +236,11 @@ namespace NSharp.Numerics.DG
 
         private double InitialFunction(double space)
         {
-            //return Math.Exp(-Math.Log(2.0) * (space + 1.0) * (space + 1.0) / (0.2 * 0.2));
-            return Math.Sin(2.0*Math.PI*space);
+            return Math.Sin(veloCity * Math.PI * space);
+            //if (space >= 0.3 && space <= 0.7)
+            //    return 1.0;
+            //else
+            //    return 0.0;
         }
 
         private double InhomogenuousPart(double space, double time)
@@ -152,18 +250,19 @@ namespace NSharp.Numerics.DG
 
         private double FluxFunction(double u)
         {
-            return 2.0 * u;
+            return veloCity * u;
         }
 
         private double NumFlux(double left, double right)
         {
-            return 1.0 / 2.0 * (FluxFunction(left) + FluxFunction(right)) - 1.0 / 12.0 *((right - left) * (right - left));
+            return FluxFunction(left);
+            //return 1.0 / 2.0 * (FluxFunction(left) + FluxFunction(right)) - 1.0 / 12.0 *((right - left) * (right - left));
         }
 
 
         private double ExactSolution(double space, double time) 
         {
-            return Math.Sin(2.0*Math.PI * (space-2.0*time));
+            return Math.Sin(2.0 * Math.PI * (space - veloCity * time));
         }
 
     }

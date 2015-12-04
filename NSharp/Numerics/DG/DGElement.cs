@@ -128,9 +128,17 @@ namespace NSharp.Numerics.DG
                 RightBoarderInterpolation[i] = interpolator.evaluateLagrangePolynome(1.0, i);
             }
 
+            B = new Matrix(N + 1, N + 1);
+            for (int i = 0; i <= N; i++)
+            {
+                B[i, 0] = LeftBoarderInterpolation[i];
+                B[i, N] = RightBoarderInterpolation[i];
+            }
+
             volumeMatrix = invMassMatrix * (!differentialMatrix) * massMatrix;
             LeftBoarderInterpolation = invMassMatrix * LeftBoarderInterpolation;
             RightBoarderInterpolation = invMassMatrix * RightBoarderInterpolation;
+            
         }
 
         public Vector EvaluateTimeDerivativeGaussLegendre(double time)
@@ -206,6 +214,48 @@ namespace NSharp.Numerics.DG
             return inhomoPart;
         }
 
+        //Gibt M^-1 * B zurück
+        public Matrix GetSMatrix()
+        {
+            return invMassMatrix * B;
+        }
+
+        public Matrix GetDifferentialMatrix()
+        {
+            return differentialMatrix;
+        }
+
+        public Matrix GetL1Matrix()
+        {
+            Matrix L1 = new Matrix(N + 1, N + 1);
+            for (int i = 0; i <= N; i++)
+                L1[0, i] = interpolator.evaluateLagrangePolynome(1.0, i);
+            return L1;
+        }
+
+        public Matrix GetL2Matrix()
+        {
+            Matrix L2 = new Matrix(N + 1, N + 1);
+            for (int i = 0; i <= N; i++)
+                L2[N, i] = interpolator.evaluateLagrangePolynome(1.0, i);
+            return L2;
+        }
+
+        public Matrix GetBMatrix()
+        {
+            return B;
+        }
+
+        public Matrix GetMassMatrix()
+        {
+            return massMatrix;
+        }
+        public Matrix GetInverseMassMatrix()
+        {
+            return invMassMatrix;
+        }
+
+
         private Vector ComputeStartSolution()
         {
             Vector startSolution = new Vector(N + 1);
@@ -240,6 +290,13 @@ namespace NSharp.Numerics.DG
         /**
             Periodic Boundary
         **/
+
+        public double GetSpaceLength()
+        {
+            return rightSpaceBoundary - leftSpaceBoundary;
+        }
+
+
 
         private double LeftPeriodicBoundary(double time)
         {

@@ -404,6 +404,17 @@ namespace Structures
             get { return noColumns; }
         }
 
+        public void InjectMatrixAtPosition(Matrix matrixToBeInjected, int rowPosition, int columnPosition)
+        {
+            for (int i = 0; i < matrixToBeInjected.NoRows; i++)
+            {
+                for (int k = 0; k < matrixToBeInjected.NoColumns; k++)
+                {
+                    this[rowPosition + i, columnPosition + k] = matrixToBeInjected[i, k];
+                }
+            }
+        }
+
         /// <summary>
         /// Create an Outputstring containing all values in recent matrix object.
         /// </summary>
