@@ -15,11 +15,14 @@ namespace TaskManagement.SecondProject
         static double leftSpaceBorder = 0.0;
         static double rightSpaceBorder = 1.0;
         static double endTime = 10.0;
-        static double timeStep; //N = 7, 0.0001 nehmen.
+        static double timeStep; 
+
         public void evaluate()
         {
             try {
-                ComputeSolutionForUnsteady();
+                analyseTime(1000);
+                analyseCellAndPolynomOrderCombination();
+                analyseCellElements(Math.Pow(10.0,-5.0));
             }catch(Exception err)
             {
                 computeDGLMatrices();
@@ -40,11 +43,40 @@ namespace TaskManagement.SecondProject
             return cfl;
         }
 
-        public void analyseCellElements(double error)
+        #region Effizientsanalyse
+        public void analyseCellAndPolynomOrderCombination()
         {
             Console.WriteLine("Start computation for No. Cell Elements...");
             IntegrationMode mode = IntegrationMode.GaussLobatto;
             int[] polynomOrders = { 1, 3, 7 };
+            int[] elements = { 512, 256, 128 };
+            Vector CFLMapping = GetCFL(mode);
+            double computedError = 0.0;
+
+            for (int i = 0; i < polynomOrders.Length; i++)
+            {
+                int polynomOrder = polynomOrders[i];
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+
+                Console.Write("N = " + polynomOrder + " - N_Q = " + elements[i]);
+                DGController dgController = new DGController();
+                dgController.createDGElements(elements[i], mode, polynomOrder, leftSpaceBorder, rightSpaceBorder);
+                timeStep = dgController.ComputeTimeStep(CFLMapping[polynomOrders[i] - 1]);
+                computedError = dgController.computeSolution(endTime, timeStep);
+                Console.Write(" - L2 Error: " + computedError);
+                sw.Stop();
+                GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\AufgabeC_II_N= " + polynomOrder + "_NQ=" + elements[i] + ".txt", "Error:" + computedError + " - Time:" + sw.Elapsed);
+            }
+
+            Console.WriteLine("Analyse Cell Elements finished");
+        }
+
+        public void analyseCellElements(double error)
+        {
+            Console.WriteLine("Start computation for No. Cell Elements...");
+            IntegrationMode mode = IntegrationMode.GaussLobatto;
+            int[] polynomOrders = {1,3, 7 };
             Vector CFLMapping = GetCFL(mode);
             double computedError = 0.0;
             int noElements ;
@@ -53,24 +85,65 @@ namespace TaskManagement.SecondProject
             {
                 noElements = 1;
                 int polynomOrder = polynomOrders [i];
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
                 do{
-                    Console.Write("N = " + polynomOrder + " - N_Q = " + noElements);
-                    Stopwatch sw = new Stopwatch();
-                    sw.Start();
+                    Console.Write("N = " + polynomOrder + " - N_Q = " + noElements);              
                     DGController dgController = new DGController();
                     dgController.createDGElements(noElements, mode, polynomOrder, leftSpaceBorder, rightSpaceBorder);
                     timeStep = dgController.ComputeTimeStep(CFLMapping[polynomOrders[i] - 1]);
-                    computedError = dgController.computeSolution(endTime, timeStep);
-                    sw.Stop();
-                    Console.Write(" - L2 Error: " +);
+                    computedError = dgController.computeSolution(endTime, timeStep);                   
+                    Console.Write(" - L2 Error: " + computedError);
                     Console.WriteLine(" - PassedTime: " + sw.Elapsed);
-
                     noElements++;
                 }while(computedError > error);
+                sw.Stop();
+                GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\timeAndCells_N= " + polynomOrder + ".txt", "NoCells:" + (--noElements) + " - Time:" + sw.Elapsed);
             }
 
             Console.WriteLine("Analyse Cell Elements finished");
         }
+
+        public void analyseTime(double maxTime)
+        {
+            Console.WriteLine("Start time computation for No. Cell Elements...");
+            IntegrationMode mode = IntegrationMode.GaussLobatto;
+            int[] polynomOrders = { 1, 3, 7 };
+            Vector CFLMapping = GetCFL(mode);
+            double computedError = 0.0;
+            double passedTime;
+            int noElements;
+
+            for (int i = 0; i < polynomOrders.Length; i++)
+            {
+                noElements = 1;
+                int polynomOrder = polynomOrders[i];
+                StringBuilder sb = new StringBuilder();
+                do
+                {
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    Console.Write("N = " + polynomOrder + " - N_Q = " + noElements);
+                    sb.Append("N = " + polynomOrder + " & N_Q = " + noElements);
+                    DGController dgController = new DGController();
+                    dgController.createDGElements(noElements, mode, polynomOrder, leftSpaceBorder, rightSpaceBorder);
+                    timeStep = dgController.ComputeTimeStep(CFLMapping[polynomOrders[i] - 1]);
+                    computedError = dgController.computeSolution(endTime, timeStep);
+                    Console.Write(" - L2 Error =  " + computedError);
+                    Console.WriteLine(" - PassedTime = " + sw.Elapsed);
+                    sb.Append(" & L2 Error =  " + computedError).Append(" & PassedTime = " + sw.Elapsed).Append(@"\\").AppendLine();         
+                    noElements += 1;
+                    sw.Stop();
+                    passedTime = sw.Elapsed.TotalMilliseconds;
+                } while (passedTime <= maxTime);
+                 
+                
+                GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\TimePassedAndError= " + polynomOrder + ".txt", sb.ToString());
+            }
+
+            Console.WriteLine("Analyse Cell Elements finished");
+        }
+        #endregion
 
         #region ErrorList
         private void ComputeErrorLists()
