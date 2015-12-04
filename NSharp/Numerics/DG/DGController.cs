@@ -115,7 +115,7 @@ namespace NSharp.Numerics.DG
 
 
         public double ComputeTimeStep(double cfl){
-            return myMode == IntegrationMode.GaussLobatto ? cfl * ComputeSpaceLengthInElement()  / veloCity : cfl * ComputeSpaceLengthInElement() / veloCity;
+            return cfl * ComputeSpaceLengthInElement()  / veloCity ;
         }
 
         public Matrix ConstructDGLMatrix()
@@ -201,7 +201,7 @@ namespace NSharp.Numerics.DG
         }
         public double ComputeSpaceLengthInElement()
         {
-            return myMode == IntegrationMode.GaussLobatto ? spaceLengthInElements / (double)polynomOrder : spaceLengthInElements / ((double)polynomOrder+2);
+            return spaceLengthInElements / (double)(polynomOrder+1) ;
         }
         //Berechnet den L2 Fehler indem die Lösung mit 2N Polynomen approximiert wird.
         public double computeError(double endTime)
