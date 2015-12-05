@@ -60,5 +60,19 @@ namespace NSharp.Converter
             sb.Append("]");
             return sb.ToString();
         }
+
+        public static String ConvertMatrixToMatlabReadable(Matrix matrix)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int rows = 0; rows < matrix.NoRows; rows++)
+            {
+                for (int columns = 0; columns < matrix.NoColumns; columns++)
+                {
+                    sb.Append(("" + matrix[rows, columns]).Replace(",", ".")).Append(" ");
+                }
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
     }
 }
