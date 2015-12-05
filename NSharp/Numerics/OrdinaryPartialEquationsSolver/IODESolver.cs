@@ -11,5 +11,7 @@ namespace NSharp.Numerics.OrdinaryPartialEquationsSolver
     {
         Vector computeSolutionForNextStep(Vector initial, OrdinaryDifferentialEquation ode, double startTime, double endTime);
         Vector computeSolutionWithMultipleSteps(Vector initial, OrdinaryDifferentialEquation ode, double startTime, double endTime, double step);
+
+        Vector computeSolutionVectorWithMultipleSteps(Vector initial, OrdinaryDifferentialEquation ode, double startTime, double endTime, double step);
     }
 }

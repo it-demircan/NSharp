@@ -64,5 +64,35 @@ namespace NSharp.Numerics.OrdinaryPartialEquationsSolver
 
             return tempSolution;
         }
+
+
+        public Vector computeSolutionVectorWithMultipleSteps(Vector initial, OrdinaryDifferentialEquation ode, double startTime, double endTime, double step)
+        {
+
+            double tempTime = startTime;
+            int N = Convert.ToInt32((endTime - startTime) / step) + 1;
+            Vector tempSolution = initial;
+
+            Vector solution = new Vector(N);
+            solution[0] = initial[0];
+
+            Vector temp = new Vector(1);
+
+            for (int i = 1; i < N; i++)
+            {
+
+                temp[0] = solution[i - 1];
+                solution[i] = computeSolutionForNextStep(temp, ode, tempTime, tempTime + step)[0];
+                tempTime += step;
+            }
+
+            if (!GeneralHelper.isXAlmostEqualToY(startTime + (N-1) * step, endTime))
+            {
+                tempTime = startTime + N * step;
+                tempSolution = computeSolutionForNextStep(tempSolution, ode, tempTime, endTime);
+            }
+
+            return solution;
+        }
     }
 }
