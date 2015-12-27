@@ -68,7 +68,6 @@ namespace NSharp.Numerics.OrdinaryPartialEquationsSolver
 
         public Vector computeSolutionVectorWithMultipleSteps(Vector initial, OrdinaryDifferentialEquation ode, double startTime, double endTime, double step)
         {
-
             double tempTime = startTime;
             int N = Convert.ToInt32((endTime - startTime) / step) + 1;
             Vector tempSolution = initial;

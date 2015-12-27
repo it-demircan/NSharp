@@ -44,6 +44,8 @@
     <Compile Include="LinearAlgebra\GaußEliminationSolver.cs" />
     <Compile Include="Measures\MeasureFunctions.cs" />
     <Compile Include="Modelling\LocationOptimization\MultiFacilityProblemSolver.cs" />
+    <Compile Include="Numerics\DG\1DSystem\DGSystemController.cs" />
+    <Compile Include="Numerics\DG\1DSystem\DGSystemElement.cs" />
     <Compile Include="Numerics\DG\DGController.cs" />
     <Compile Include="Numerics\DG\DGElement.cs" />
     <Compile Include="Numerics\DG\IntegrationToolbox.cs" />

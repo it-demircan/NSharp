@@ -14,16 +14,18 @@ namespace TaskManagement.SecondProject
     {
         static double leftSpaceBorder = 0.0;
         static double rightSpaceBorder = 1.0;
-        static double endTime = 10.0;
+        static double endTime = 1.0;
         static double timeStep; 
 
         public void evaluate()
         {
             try {
-                analyseTime(1000);
-                analyseCellAndPolynomOrderCombination();
-                analyseCellElements(Math.Pow(10.0,-5.0));
-            }catch(Exception err)
+                ComputeErrorLists();
+                //analyseTime(1000);
+                //analyseCellAndPolynomOrderCombination();
+                //analyseCellElements(Math.Pow(10.0,-5.0));
+            }
+            catch(Exception err)
             {
                 computeDGLMatrices();
             }
@@ -32,13 +34,13 @@ namespace TaskManagement.SecondProject
         private Vector GetCFL(IntegrationMode mode)
         {
             Vector cfl;
-            if (mode == IntegrationMode.GaussLegendre)
+            if (mode == IntegrationMode.GaussLobatto)
             {
-                cfl = new Vector(new double[] { 2, 1.4, 1.08, 0.9, 0.78, 0.68, 0.62 });
+                cfl = new Vector(new double[] { 1.36, 1.06, 0.89, 0.77, 0.68, 0.61, 0.56 });
             }
             else
             {
-                cfl = new Vector(new double[] { 1.5, 1.3, 1.2, 1.05, 0.95, 0.9, 0.83 });
+                cfl = new Vector(new double[] { 3.17, 2.05, 1.63, 1.38, 1.21, 1.08, 0.98 });
             }
             return cfl;
         }
@@ -153,17 +155,17 @@ namespace TaskManagement.SecondProject
             GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLobatto_ErrorList.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(errorList, "A"));
             Matrix EOC = computeEOC(errorList);
             GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLobatto_EOCList.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(EOC, "A"));
-            Console.Write("Gauss:");
-            errorList = computeErrorList(IntegrationMode.GaussLegendre);
-            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLegendre_Error.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(errorList, "A"));
-            EOC = computeEOC(errorList);
-            GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLegendre_EOC.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(EOC, "A"));
+            //Console.Write("Gauss:");
+            //errorList = computeErrorList(IntegrationMode.GaussLegendre);
+            //GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLegendre_Error.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(errorList, "A"));
+            //EOC = computeEOC(errorList);
+            //GeneralHelper.WriteOutputText(Directory.GetCurrentDirectory() + "\\GaussLegendre_EOC.txt", NSharp.Converter.MatLabConverter.ConvertMatrixToMatLabMatrix(EOC, "A"));
         }
 
         private Matrix computeErrorList(IntegrationMode mode)
         {
             Console.WriteLine("Start computation for Error List...");
-            int[] elementNumber = {2,4,8,16,32,64};
+            int[] elementNumber = {2,4,8,16,32};
             int[] polynomOrders = {1,3,7};
 
             Vector CFLMapping = GetCFL(mode);

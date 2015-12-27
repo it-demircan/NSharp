@@ -376,6 +376,17 @@ namespace Structures
             return new Vector(colValues);
         }
 
+        public Vector GetRowAsColumnVector(int rowIdx)
+        {
+            double[] rowValues = new double[this.NoColumns];
+
+            for (int i = 0; i < this.NoColumns; i++)
+            {
+                rowValues[i] = this[rowIdx, i];
+            }
+            return new Vector(rowValues);
+        }
+
         /// <summary>
         /// Accessor for an element in matrix A at position [x,y]
         /// </summary>

@@ -20,8 +20,16 @@ namespace TaskManagement.SecondProject
             OrdinaryDifferentialEquation testEquation = new OrdinaryDifferentialEquation(mySystem);
             IODESolver odeSolver = new RungeKuttaSolver();
 
-            Vector res = odeSolver.computeSolutionWithMultipleSteps(initial, testEquation, 1.0, 2.0, 0.0005);
-            Console.WriteLine("Ergebnis: " + res.toString(15));
+            double[] errorList = new double[10];
+
+            for (int i = 1; i <= 10; i++)
+            {
+                double timeStep = Math.Pow(2.0, -i);
+                Vector res = odeSolver.computeSolutionVectorWithMultipleSteps(initial, testEquation, 1.0, 2.0, timeStep);
+                //Vector exact = null; //hier die exacte auswertung
+                //double error = (res - exact) * (res - exact);
+            }
+            
         }
 
         /// <summary>
