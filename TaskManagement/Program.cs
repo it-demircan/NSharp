@@ -14,6 +14,7 @@ namespace TaskManagement
             try
             {
                 ThirdProject.TaskOne one = new ThirdProject.TaskOne();
+                //one.TestSystemDG();
                 one.TestSystemDG();
                 Console.Write("Calculated");
             }

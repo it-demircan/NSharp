@@ -164,7 +164,14 @@ namespace NSharp.Numerics.DG._1DSystem
             return startSolution;
         }
 
-        
+        public Vector GetOriginNodes()
+        {
+            Vector originNodes = new Vector(nodes.Length);
+            for (int i = 0; i < nodes.Length; i++)
+                originNodes[i] = MapToOriginSpace(nodes[i]);
+            return originNodes;
+        }
+
         public double MapToOriginSpace(double x)
         {
             return leftSpaceBoundary + ((x + 1.0) / 2.0) * (rightSpaceBoundary - leftSpaceBoundary);

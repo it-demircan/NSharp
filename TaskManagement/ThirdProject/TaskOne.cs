@@ -14,8 +14,8 @@ namespace TaskManagement.ThirdProject
         public void TestSystemDG()
         {
             DGSystemController controller = new DGSystemController();
-            controller.createDGElements(8, 3, 0.0, 1.0, 2);
-            controller.ComputeSolution(1.0, 0.001);
+            controller.createDGElements(10, 3, 0.0, 1.0, 2);
+            controller.ComputeSolution(1.0);
             Console.Write(controller.GetSolution().toString(15));
         }
 

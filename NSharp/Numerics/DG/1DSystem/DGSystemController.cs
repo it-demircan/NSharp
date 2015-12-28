@@ -12,8 +12,7 @@ namespace NSharp.Numerics.DG._1DSystem
         int polynomOrder;//N
         int systemDimension;
         double spaceLengthInElements;
-        const double GRAVITATION = 9.812;
-
+       
         DGSystemElement[] elements;
 
 
@@ -62,15 +61,25 @@ namespace NSharp.Numerics.DG._1DSystem
             return SolutionSystem;
         }
 
-        public void ComputeSolution(double endTime, double timeStep)
+        //timestep == 0.0 => automatisch
+        public void ComputeSolution(double endTime, double timeStep = 0.0)
         {
             double recentTime = 0.0;
             Matrix[] recentTimeDerivatives = new Matrix[elements.Length];
+            double recentTimeStep = timeStep;
+
 
             while (recentTime < endTime)
             {
-                if (recentTime + timeStep > endTime)
-                    timeStep = endTime - recentTime;
+                if (timeStep == 0.0)
+                {
+                    double lambdaMax = GetMaximumLambdaOverall();
+                    recentTimeStep = ComputeTimeStep(0.5, lambdaMax);
+                }
+
+
+                if (recentTime + recentTimeStep > endTime)
+                    recentTimeStep = endTime - recentTime;
                 //Vektoren zurüksetzen
                 for (int i = 0; i < elements.Length; i++)
                     recentTimeDerivatives[i] = new Matrix(polynomOrder + 1, systemDimension);
@@ -81,16 +90,24 @@ namespace NSharp.Numerics.DG._1DSystem
                     for (int i = 0; i < elements.Length; i++)
                     {
                         Matrix solutionSystem = elements[i].GetSolution();
-                        double nextTimeStep = recentTime + B[k] * timeStep;
+                        double nextTimeStep = recentTime + B[k] * recentTimeStep;
                         Matrix EvaluatedTimeDerivative = elements[i].EvaluateTimeDerivativeGaussLobatto(nextTimeStep);
 
                         for (int sysIdx = 0; sysIdx < systemDimension; sysIdx++)
                         {
                             Vector tempTimeDerivative = (Vector)(A[k] * recentTimeDerivatives[i].GetColumn(sysIdx)) + EvaluatedTimeDerivative.GetColumn(sysIdx);
                             recentTimeDerivatives[i].InjectMatrixAtPosition(tempTimeDerivative, 0, sysIdx);
-                            Vector solution = solutionSystem.GetColumn(sysIdx) + (Vector)(C[k] * timeStep * recentTimeDerivatives[i].GetColumn(sysIdx));
+                            Vector solution = solutionSystem.GetColumn(sysIdx) + (Vector)(C[k] * recentTimeStep * recentTimeDerivatives[i].GetColumn(sysIdx));
                             solutionSystem.InjectMatrixAtPosition(solution, 0, sysIdx);
                         }
+
+                        //Problemabhägnig
+                        //Matrix Residuum = ComputeResiduum(elements[i].GetOriginNodes(), recentTime + recentTimeStep);
+                        //Vector u1 = solutionSystem.GetColumn(0) + (Vector)(recentTimeStep * Residuum.GetColumn(0));
+                        //Vector u2 = solutionSystem.GetColumn(1) + (Vector)(recentTimeStep * Residuum.GetColumn(1));
+                        //solutionSystem.InjectMatrixAtPosition(u1, 0, 0);
+                        //solutionSystem.InjectMatrixAtPosition(u2, 0, 1);
+
                         elements[i].UpdateSolutionSystem(solutionSystem);
                     }
 
@@ -101,7 +118,7 @@ namespace NSharp.Numerics.DG._1DSystem
                     }
                 }
 
-                recentTime += timeStep;
+                recentTime += recentTimeStep;
             }
         }
 
@@ -116,6 +133,27 @@ namespace NSharp.Numerics.DG._1DSystem
             return spaceLengthInElements / (double)(polynomOrder + 1);
         }
 
+        public double ComputeTimeStep(double cfl, double lambdaMax)
+        {
+            return cfl * ComputeSpaceLengthInElement() / lambdaMax;
+        }
+
+
+        /**
+          Problem Abhängige Funktionen
+        **/
+        const double GRAVITATION = 9.81;
+
+        public Vector InitialFunction(Vector nodes)
+        {
+            Vector result = new Vector(systemDimension);
+
+            result[0] = Math.Sin(2.0 * Math.PI * nodes[0]) + 10.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
+            result[1] = result[0];
+
+            return result;
+        }
+
         public Vector FluxFunction(Vector solution)
         {
             Vector result = new Vector(systemDimension);
@@ -125,20 +163,30 @@ namespace NSharp.Numerics.DG._1DSystem
             return result;
         }
 
-        public Vector InitialFunction(Vector nodes)
-        {
-            Vector result = new Vector(systemDimension);
-
-            result[0] = Math.Sin(nodes[0])+2.0;
-            result[1] = 1.0/5.0;
-
-            return result;
-        }
-
         public Vector NumFlux(Vector left,Vector right)
         {
             Vector temp = FluxFunction(left) + FluxFunction(right);
             return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
+        }
+
+        public Vector InhomogenuousPart(Vector evaluationNodes, double time)
+        {
+            return new Vector(systemDimension);
+        }
+
+        private Matrix ComputeResiduum(Vector nodes, double time)
+        {
+            Matrix temp = new Matrix(polynomOrder + 1,systemDimension);
+
+            for(int i = 0; i < temp.NoRows; i++)
+            {
+                temp[i, 0] = -2.0 * Math.PI * Math.Sin(2.0 * Math.PI * nodes[i]) * Math.Sin(2.0 * Math.PI * time)
+                    + 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * nodes[i]) * Math.Cos(2.0 * Math.PI * time);
+
+                temp[i, 1] = temp[i, 0] + GRAVITATION * (Math.Cos(2.0*Math.PI*time)*Math.Sin(2.0*Math.PI*nodes[i])+10.0)*(2.0 * Math.PI * Math.Cos(2.0 * Math.PI * nodes[i]) * Math.Cos(2.0 * Math.PI * time));
+            }
+
+            return temp;
         }
 
         private double ComputeMaxEigenWert(Vector left, Vector right)
@@ -175,11 +223,23 @@ namespace NSharp.Numerics.DG._1DSystem
             return maxEigenValue;
         }
 
-        public Vector InhomogenuousPart(Vector evaluationNodes, double time)
+        public double GetMaximumLambdaOverall()
         {
-            return new Vector(systemDimension);
-        }
+            List<Vector> AllEvaluations = new List<Vector>();
+            double maxEigenvalue;
 
+            for (int i = 0; i < elements.Length; i++)
+            {
+                DGSystemElement temp = elements[i];
+                for(int m = 0; m < temp.GetSolution().NoRows;m++)
+                {
+                    AllEvaluations.Add(temp.GetSolution().GetRowAsColumnVector(m));
+                }
+            }
+
+            maxEigenvalue = ComputeMaxAbsolutEigenvalue(AllEvaluations);
+            return maxEigenvalue;
+        }
 
         #region Runge Kutte 
         //Variablen für Runga Kutta
