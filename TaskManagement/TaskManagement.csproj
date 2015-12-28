@@ -53,6 +53,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SecondProject\TaskThree.cs" />
     <Compile Include="SecondProject\TaskTwo.cs" />
+    <Compile Include="ThirdProject\TaskOne.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

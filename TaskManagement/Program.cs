@@ -11,8 +11,17 @@ namespace TaskManagement
     {
         static void Main(string[] args)
         {
-            TaskThree three = new TaskThree();
-            three.evaluate();
+            try
+            {
+                ThirdProject.TaskOne one = new ThirdProject.TaskOne();
+                one.TestSystemDG();
+                Console.Write("Calculated");
+            }
+            catch (Exception err)
+            {
+                Console.Write(err.StackTrace);
+            }
+            
             Console.ReadKey();
         }
     }

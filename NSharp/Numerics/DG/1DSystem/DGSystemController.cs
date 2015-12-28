@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 
 namespace NSharp.Numerics.DG._1DSystem
 {
-    class DGSystemController
+    public class DGSystemController
     {
         int polynomOrder;//N
         int systemDimension;
         double spaceLengthInElements;
+        const double GRAVITATION = 9.812;
 
         DGSystemElement[] elements;
 
@@ -49,6 +50,18 @@ namespace NSharp.Numerics.DG._1DSystem
         }
 
 
+        public Matrix GetSolution()
+        {
+            Matrix SolutionSystem = new Matrix(elements.Length * (polynomOrder + 1), systemDimension);
+
+            for(int i = 0; i < elements.Length; i++)
+            {
+                Matrix cellSolution = elements[i].GetSolution();
+                SolutionSystem.InjectMatrixAtPosition(cellSolution, i * (polynomOrder + 1), 0);
+            }
+            return SolutionSystem;
+        }
+
         public void ComputeSolution(double endTime, double timeStep)
         {
             double recentTime = 0.0;
@@ -76,6 +89,7 @@ namespace NSharp.Numerics.DG._1DSystem
                             Vector tempTimeDerivative = (Vector)(A[k] * recentTimeDerivatives[i].GetColumn(sysIdx)) + EvaluatedTimeDerivative.GetColumn(sysIdx);
                             recentTimeDerivatives[i].InjectMatrixAtPosition(tempTimeDerivative, 0, sysIdx);
                             Vector solution = solutionSystem.GetColumn(sysIdx) + (Vector)(C[k] * timeStep * recentTimeDerivatives[i].GetColumn(sysIdx));
+                            solutionSystem.InjectMatrixAtPosition(solution, 0, sysIdx);
                         }
                         elements[i].UpdateSolutionSystem(solutionSystem);
                     }
@@ -104,17 +118,61 @@ namespace NSharp.Numerics.DG._1DSystem
 
         public Vector FluxFunction(Vector solution)
         {
-            return new Vector(polynomOrder+1);
+            Vector result = new Vector(systemDimension);
+
+            result[0] = solution[1];
+            result[1] = solution[1] / solution[0] + 1.0 / 2.0 * GRAVITATION * solution[0] * solution[0];
+            return result;
         }
 
-        public Vector InitialFunction(Vector solution)
+        public Vector InitialFunction(Vector nodes)
         {
-            return new Vector(polynomOrder + 1);
+            Vector result = new Vector(systemDimension);
+
+            result[0] = Math.Sin(nodes[0])+2.0;
+            result[1] = 1.0/5.0;
+
+            return result;
         }
 
         public Vector NumFlux(Vector left,Vector right)
         {
-            return new Vector(polynomOrder + 1);
+            Vector temp = FluxFunction(left) + FluxFunction(right);
+            return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
+        }
+
+        private double ComputeMaxEigenWert(Vector left, Vector right)
+        {
+            List<Vector> boundaryValues = new List<Vector>() { ComputeEigenwert(left), ComputeEigenwert(right) };
+            double maxEigenvalue = ComputeMaxAbsolutEigenvalue(boundaryValues);
+            return maxEigenvalue;
+        }
+
+        private Vector ComputeEigenwert(Vector evaluated)
+        {
+            double h = evaluated[0];
+            double hv = evaluated[1];
+            Vector Eigenvalues = new Vector(2);
+            Eigenvalues[0] = hv / h + Math.Sqrt(GRAVITATION * h);
+            Eigenvalues[1] = hv / h - Math.Sqrt(GRAVITATION * h);
+            return Eigenvalues;
+        }
+        public double ComputeMaxAbsolutEigenvalue(List<Vector> vectorsWithEigenvalues)
+        {
+            double maxEigenValue = 0.0;
+
+            for (int i = 0; i < vectorsWithEigenvalues.Count; i++)
+            {
+                Vector tmp = vectorsWithEigenvalues.ElementAt(i);
+                for(int m = 0; m < tmp.Length; m++) {
+                    if(Math.Abs(tmp[m])> maxEigenValue)
+                    {
+                        maxEigenValue = Math.Abs(tmp[m]);
+                    }
+                }
+            }
+
+            return maxEigenValue;
         }
 
         public Vector InhomogenuousPart(Vector evaluationNodes, double time)

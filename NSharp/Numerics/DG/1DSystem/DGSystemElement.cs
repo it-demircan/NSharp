@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace NSharp.Numerics.DG._1DSystem
 {
-    class DGSystemElement
+    public class DGSystemElement
     {
         public DGSystemElement LeftNeighbour, RightNeighbour;
         public double leftSpaceBoundary, rightSpaceBoundary;
@@ -146,13 +146,15 @@ namespace NSharp.Numerics.DG._1DSystem
 
         private Matrix ComputeStartSolution()
         {
-            Matrix startSolution = new Vector(N + 1,SystemDimension);
+            Matrix startSolution = new Matrix(N + 1,SystemDimension);
 
             for (int i = 0; i <= N; i++)
             {
                 Vector evaluationNodes = new Vector(SystemDimension);
-                evaluationNodes[0] = MapToOriginSpace(nodes[i]);
-                evaluationNodes[1] = MapToOriginSpace(nodes[i]);
+                for (int m = 0; m < SystemDimension; m++)
+                {
+                    evaluationNodes[m] = MapToOriginSpace(nodes[i]);
+                }
 
                 Vector evaluation = InitialFunction(evaluationNodes);
 
