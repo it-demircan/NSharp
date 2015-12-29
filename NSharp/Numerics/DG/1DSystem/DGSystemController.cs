@@ -74,8 +74,9 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.05, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(0.01, lambdaMax);
                 }
+                Console.WriteLine("RecentTime: " + recentTime);
 
                 if (recentTime + recentTimeStep > endTime)
                     recentTimeStep = endTime - recentTime;
@@ -139,10 +140,13 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector InitialFunction(Vector nodes)
         {
             Vector result = new Vector(systemDimension);
+            //Test
+            result[0] = Math.Sin(nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
+            result[1] = result[0];
 
             //Aufgabe 1 - A)
-            result[0] = Math.Sin(2.0*Math.PI*nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
-            result[1] = result[0];
+            //result[0] = Math.Sin(2.0*Math.PI*nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
+            //result[1] = result[0];
 
             return result;
         }
@@ -165,13 +169,16 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector InhomogenuousPart(Vector solution,double node, double time)
         {
             Vector inhomo = new Vector(systemDimension);
+            //Test
+            inhomo[0] = 0;
+            inhomo[1] = -Math.Cos(node - time) + Math.Cos(time - node) * (GRAVITATION * (-Math.Sin(time - node)) + 2.0 * GRAVITATION + 1.0);
 
             //Aufgabe 1 - A)
-            inhomo[0] = 0;
-            inhomo[1] = -GRAVITATION * solution[0] * 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * (node - time));
+            //inhomo[0] = 0;
+            //inhomo[1] = -GRAVITATION * solution[0] * 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * (node - time));
 
-            //Residuum
-            inhomo[1] += 8.0 * GRAVITATION * Math.PI* Math.Cos(2.0 * Math.PI * (node - time)) + 4.0 * GRAVITATION *Math.PI* Math.Sin(2.0 * Math.PI * (node - time)) * Math.Cos(2.0 * Math.PI * (node - time));
+            ////Residuum
+            //inhomo[1] += 8.0 * GRAVITATION * Math.PI* Math.Cos(2.0 * Math.PI * (node - time)) + 4.0 * GRAVITATION *Math.PI* Math.Sin(2.0 * Math.PI * (node - time)) * Math.Cos(2.0 * Math.PI * (node - time));
             //End Aufgabe 1 - A)
 
             return inhomo;
@@ -186,9 +193,13 @@ namespace NSharp.Numerics.DG._1DSystem
                 Vector nodes;
                 for(int k = 0; k < (nodes=elements[i].GetOriginNodes()).Length; k++)
                 {
-                    //Aufgabe 1 - A
-                    ExactSolution[i * (nodes.Length) + k, 0] = 2.0 + Math.Sin(2.0 * Math.PI * (nodes[k] - time));
+                    //TEST 
+                    ExactSolution[i * (nodes.Length) + k, 0] = 2.0 + Math.Sin((nodes[k] - time));
                     ExactSolution[i * (nodes.Length) + k, 1] = 1.0;
+
+                    //Aufgabe 1 - A
+                    //ExactSolution[i * (nodes.Length) + k, 0] = 2.0 + Math.Sin(2.0 * Math.PI * (nodes[k] - time));
+                    //ExactSolution[i * (nodes.Length) + k, 1] = 1.0;
                     //End Aufgabe 1 - A
                 }
             }

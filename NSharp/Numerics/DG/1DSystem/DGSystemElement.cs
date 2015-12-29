@@ -96,6 +96,26 @@ namespace NSharp.Numerics.DG._1DSystem
 
             Matrix Inhomogenuous = ComputeInhomogenuousPart(time);
 
+            //WEAK
+            //for (int sysIdx = 0; sysIdx < SystemDimension; sysIdx++)
+            //{
+            //    Vector timeDerivate;
+            //    Vector volume = new Vector(N + 1);
+            //    Vector surface = new Vector(N + 1);
+            //    surface[0] = NumFluxLeft[sysIdx];
+            //    surface[N] = NumFluxRight[sysIdx];
+
+            //    for (int vol = 0; vol < N + 1; vol++)
+            //    {
+            //        volume[vol] = FluxEvaluation[vol, sysIdx];
+            //    }
+            //    timeDerivate = VolumeMatrix * volume - SurfaceMatrix * surface;
+            //    timeDerivate = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivate);
+            //    timeDerivate += Inhomogenuous.GetColumn(sysIdx);
+            //    SystemTimeDerivative.InjectMatrixAtPosition(timeDerivate, 0, sysIdx);
+            //}
+
+            //Strong
             for (int sysIdx = 0; sysIdx < SystemDimension; sysIdx++)
             {
                 Vector timeDerivate;
@@ -104,13 +124,17 @@ namespace NSharp.Numerics.DG._1DSystem
                 surface[0] = NumFluxLeft[sysIdx];
                 surface[N] = NumFluxRight[sysIdx];
 
-                for(int vol = 0; vol < N + 1; vol++)
+                for (int vol = 0; vol < N + 1; vol++)
                 {
                     volume[vol] = FluxEvaluation[vol, sysIdx];
                 }
-                timeDerivate = VolumeMatrix * volume - SurfaceMatrix * surface;
+
+                surface = surface - volume;
+
+                timeDerivate = -1.0 * InvMassMatrix * B * surface - DifferentialMatrix * volume;
                 timeDerivate = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivate);
                 timeDerivate += Inhomogenuous.GetColumn(sysIdx);
+                
                 SystemTimeDerivative.InjectMatrixAtPosition(timeDerivate, 0, sysIdx);
             }
 
