@@ -74,9 +74,8 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.5, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(0.05, lambdaMax);
                 }
-
 
                 if (recentTime + recentTimeStep > endTime)
                     recentTimeStep = endTime - recentTime;
@@ -100,13 +99,6 @@ namespace NSharp.Numerics.DG._1DSystem
                             Vector solution = solutionSystem.GetColumn(sysIdx) + (Vector)(C[k] * recentTimeStep * recentTimeDerivatives[i].GetColumn(sysIdx));
                             solutionSystem.InjectMatrixAtPosition(solution, 0, sysIdx);
                         }
-
-                        //Problemabhägnig
-                        //Matrix Residuum = ComputeResiduum(elements[i].GetOriginNodes(), recentTime + recentTimeStep);
-                        //Vector u1 = solutionSystem.GetColumn(0) + (Vector)(recentTimeStep * Residuum.GetColumn(0));
-                        //Vector u2 = solutionSystem.GetColumn(1) + (Vector)(recentTimeStep * Residuum.GetColumn(1));
-                        //solutionSystem.InjectMatrixAtPosition(u1, 0, 0);
-                        //solutionSystem.InjectMatrixAtPosition(u2, 0, 1);
 
                         elements[i].UpdateSolutionSystem(solutionSystem);
                     }
@@ -148,7 +140,8 @@ namespace NSharp.Numerics.DG._1DSystem
         {
             Vector result = new Vector(systemDimension);
 
-            result[0] = Math.Sin(2.0 * Math.PI * nodes[0]) + 10.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
+            //Aufgabe 1 - A)
+            result[0] = Math.Sin(2.0*Math.PI*nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
             result[1] = result[0];
 
             return result;
@@ -159,7 +152,7 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector result = new Vector(systemDimension);
 
             result[0] = solution[1];
-            result[1] = solution[1] / solution[0] + 1.0 / 2.0 * GRAVITATION * solution[0] * solution[0];
+            result[1] = (solution[1] / solution[0]) + (1.0 / 2.0) * GRAVITATION * solution[0] * solution[0];
             return result;
         }
 
@@ -169,26 +162,38 @@ namespace NSharp.Numerics.DG._1DSystem
             return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
         }
 
-        public Vector InhomogenuousPart(Vector evaluationNodes, double time)
+        public Vector InhomogenuousPart(Vector solution,double node, double time)
         {
-            return new Vector(systemDimension);
+            Vector inhomo = new Vector(systemDimension);
+
+            //Aufgabe 1 - A)
+            inhomo[0] = 0;
+            inhomo[1] = -GRAVITATION * solution[0] * 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * (node - time));
+
+            //Residuum
+            inhomo[1] += 8.0 * GRAVITATION * Math.PI* Math.Cos(2.0 * Math.PI * (node - time)) + 4.0 * GRAVITATION *Math.PI* Math.Sin(2.0 * Math.PI * (node - time)) * Math.Cos(2.0 * Math.PI * (node - time));
+            //End Aufgabe 1 - A)
+
+            return inhomo;
         }
-
-        private Matrix ComputeResiduum(Vector nodes, double time)
+        
+        public Matrix ComputeExactSolution(double time)
         {
-            Matrix temp = new Matrix(polynomOrder + 1,systemDimension);
+            Matrix ExactSolution = new Matrix((polynomOrder + 1) * elements.Length, systemDimension);
 
-            for(int i = 0; i < temp.NoRows; i++)
+            for(int i = 0; i < elements.Length; i++)
             {
-                temp[i, 0] = -2.0 * Math.PI * Math.Sin(2.0 * Math.PI * nodes[i]) * Math.Sin(2.0 * Math.PI * time)
-                    + 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * nodes[i]) * Math.Cos(2.0 * Math.PI * time);
-
-                temp[i, 1] = temp[i, 0] + GRAVITATION * (Math.Cos(2.0*Math.PI*time)*Math.Sin(2.0*Math.PI*nodes[i])+10.0)*(2.0 * Math.PI * Math.Cos(2.0 * Math.PI * nodes[i]) * Math.Cos(2.0 * Math.PI * time));
+                Vector nodes;
+                for(int k = 0; k < (nodes=elements[i].GetOriginNodes()).Length; k++)
+                {
+                    //Aufgabe 1 - A
+                    ExactSolution[i * (nodes.Length) + k, 0] = 2.0 + Math.Sin(2.0 * Math.PI * (nodes[k] - time));
+                    ExactSolution[i * (nodes.Length) + k, 1] = 1.0;
+                    //End Aufgabe 1 - A
+                }
             }
-
-            return temp;
+            return ExactSolution;
         }
-
         private double ComputeMaxEigenWert(Vector left, Vector right)
         {
             List<Vector> boundaryValues = new List<Vector>() { ComputeEigenwert(left), ComputeEigenwert(right) };

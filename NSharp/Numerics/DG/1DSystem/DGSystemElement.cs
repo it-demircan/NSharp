@@ -30,7 +30,7 @@ namespace NSharp.Numerics.DG._1DSystem
         Matrix SurfaceMatrix;
 
         Func<Vector, Vector, Vector> NumericalFluxFunction;
-        Func<Vector, double, Vector> InhomogenuousFunction;
+        Func<Vector, double, double, Vector> InhomogenuousFunction;
         Func<Vector, Vector> FluxFunction;
         Func<Vector, Vector> InitialFunction;
 
@@ -38,7 +38,7 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector RightBoarderValue { get; set; }
 
 
-        public DGSystemElement(double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
+        public DGSystemElement(double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
         {
             this.leftSpaceBoundary = leftSpaceBoundary;
             this.rightSpaceBoundary = rightSpaceBoundary;
@@ -131,14 +131,16 @@ namespace NSharp.Numerics.DG._1DSystem
         {
             Matrix InhomogMatrix = new Matrix(N + 1, SystemDimension);
             Vector evaluationNodes = new Vector(SystemDimension);
+            Vector solutionAtNode = new Vector(SystemDimension);
             
             for(int i = 0; i < N + 1; i++)
             {
                 for (int m = 0; m < SystemDimension; m++)
                 {
-                    evaluationNodes[m] = MapToOriginSpace(nodes[i]);
+                    evaluationNodes[m] = MapToOriginSpace(nodes[i]);                  
                 }
-                Vector res = InhomogenuousFunction(evaluationNodes, time);
+                solutionAtNode = SolutionSystem.GetRowAsColumnVector(i);
+                Vector res = InhomogenuousFunction(solutionAtNode,evaluationNodes[0], time);
                 InhomogMatrix.InjectMatrixAtPosition(!res, i, 0);
             }
             return InhomogMatrix;

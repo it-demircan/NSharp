@@ -1,5 +1,6 @@
 ﻿using NSharp.Numerics.DG;
 using NSharp.Numerics.DG._1DSystem;
+using Structures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,9 +15,17 @@ namespace TaskManagement.ThirdProject
         public void TestSystemDG()
         {
             DGSystemController controller = new DGSystemController();
-            controller.createDGElements(10, 3, 0.0, 1.0, 2);
+            controller.createDGElements(4, 3, 0.0, 1.0, 2);
             controller.ComputeSolution(1.0);
-            Console.Write(controller.GetSolution().toString(15));
+            Matrix approx = controller.GetSolution();
+            Matrix exact = controller.ComputeExactSolution(1.0);
+
+
+            Vector diff = approx.GetColumn(0) - exact.GetColumn(0);
+            Console.Write(diff.toString(15));
+           //double err = Math.Sqrt(diff * diff);
+           //Console.Write("Error:" + err);
+           //Console.Write(approx.toString(15));
         }
 
         public void TestOldDG()
