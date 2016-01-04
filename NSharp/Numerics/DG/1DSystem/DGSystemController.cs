@@ -74,9 +74,9 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.1, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(0.5, lambdaMax);
                 }
-                Console.WriteLine("RecentTime: " + recentTime);
+                //Console.WriteLine("RecentTime: " + recentTime);
 
                 if (recentTime + recentTimeStep > endTime)
                     recentTimeStep = endTime - recentTime;

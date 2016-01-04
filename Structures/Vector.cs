@@ -191,6 +191,19 @@ namespace Structures
             return -1;
         }
 
+        public double GetMaxAbsValue()
+        {
+            double tempMax = Math.Abs(this[0]);
+            for(int i = 0; i < this.Length; i++)
+            {
+                if(tempMax < Math.Abs(this[0]))
+                {
+                    tempMax = Math.Abs(this[0]);
+                }
+            }
+            return tempMax;
+        }
+
         //Gibt die Länge des Vektors wieder
         public int Length{
             get { return base.NoRows; }
