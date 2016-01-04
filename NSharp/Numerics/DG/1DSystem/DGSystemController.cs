@@ -74,7 +74,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.01, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(0.1, lambdaMax);
                 }
                 Console.WriteLine("RecentTime: " + recentTime);
 
@@ -103,7 +103,6 @@ namespace NSharp.Numerics.DG._1DSystem
 
                         elements[i].UpdateSolutionSystem(solutionSystem);
                     }
-
                     //Rand updaten
                     for (int i = 0; i < elements.Length; i++)
                     {
@@ -135,7 +134,7 @@ namespace NSharp.Numerics.DG._1DSystem
         /**
           Problem Abhängige Funktionen
         **/
-        const double GRAVITATION = 9.81;
+        const double GRAVITATION = 1.0;
 
         public Vector InitialFunction(Vector nodes)
         {
@@ -156,7 +155,7 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector result = new Vector(systemDimension);
 
             result[0] = solution[1];
-            result[1] = (solution[1] / solution[0]) + (1.0 / 2.0) * GRAVITATION * solution[0] * solution[0];
+            result[1] = ( (solution[1]/solution[0]) * (solution[1] / solution[0]) * solution[0]) + (1.0 / 2.0) * GRAVITATION * solution[0] * solution[0];
             return result;
         }
 
