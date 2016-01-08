@@ -26,8 +26,10 @@ namespace NSharp.Numerics.DG._1DSystem
             {
                 double leftSpaceBorder = leftBoundary + (double)i * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
                 double rightSpaceBorder = leftBoundary + (double)(i + 1) * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
-                elements[i] = new DGSystemElement(leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
-
+                //Aufgabe 1
+                //elements[i] = new DGSystemElement(leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
+                //Aufgabe2
+                elements[i] = new DGSystemElement(leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
                 if (i > 0)
                 {
                     elements[i].LeftNeighbour = elements[i - 1];
@@ -62,12 +64,13 @@ namespace NSharp.Numerics.DG._1DSystem
         }
 
         //timestep == 0.0 => automatisch
-        public void ComputeSolution(double endTime, double timeStep = 0.0)
+        public Dictionary<double,double> ComputeSolution(double endTime, double timeStep = 0.0)
         {
             double recentTime = 0.0;
             Matrix[] recentTimeDerivatives = new Matrix[elements.Length];
             double recentTimeStep = timeStep;
 
+            Dictionary<double,double> energys = new Dictionary<double,double>();
 
             while (recentTime < endTime)
             {
@@ -109,9 +112,11 @@ namespace NSharp.Numerics.DG._1DSystem
                         elements[i].UpdateBorderValues();
                     }
                 }
-
+                energys.Add(recentTime, this.ComputeEnergy());
                 recentTime += recentTimeStep;
             }
+
+            return energys;
         }
 
         public double ComputeTimeStep(double cfl)
@@ -131,54 +136,98 @@ namespace NSharp.Numerics.DG._1DSystem
         }
 
 
+        public Vector GetOriginNodes()
+        {
+            Vector constant = new Vector((polynomOrder + 1) * elements.Length);
+            for (int i = 0; i < elements.Length; i++)
+            {
+                constant.InjectMatrixAtPosition(elements[i].GetOriginNodes(), i * (polynomOrder + 1), 0);
+            }
+            return constant;
+        }
+
         /**
           Problem Abhängige Funktionen
         **/
-        const double GRAVITATION = 1.0;
+
+        const double GRAVITATION = 9.812;
+
+        public double ComputeEnergy()
+        {
+            double energy = 0.0;
+            foreach (DGSystemElement element in elements)
+            {
+                energy +=  element.ComputeEnergy(GRAVITATION, Ground);
+            }
+            return energy;
+        }
+
+        public Vector ComputeMass()
+        {
+            Vector massVector = new Vector(systemDimension);
+            foreach(DGSystemElement element in elements)
+            {
+                massVector = massVector + element.ComputeMass();
+            }
+            return massVector;
+        }
+
+        
+        public Vector ComputeConstant()
+        {
+            Vector constant = new Vector((polynomOrder + 1) * elements.Length);
+            for(int i = 0; i < elements.Length; i++)
+            {
+                constant.InjectMatrixAtPosition(elements[i].GetConstantSolution(Ground), i * (polynomOrder+1), 0);
+            }
+            return constant;
+        }
 
         public Vector InitialFunction(Vector nodes)
         {
             Vector result = new Vector(systemDimension);
-            //Test
+
+            //Aufgabe 1D)
+            //result[0] = 3.0-Ground(nodes[0]);
+            //result[1] = 0.0;
+
+            //Aufgabe 1C)
+            //result[0] = nodes[0] <= 10.0 ? 3.0 - Ground(nodes[0]) : 2.5 - Ground(nodes[0]);
+            //result[1] = 0.0;
+
+            //Aufgabe 1A)
             result[0] = Math.Sin(nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
             result[1] = result[0];
-
-            //Aufgabe 1 - A)
-            //result[0] = Math.Sin(2.0*Math.PI*nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
-            //result[1] = result[0];
-
             return result;
         }
 
-        public Vector FluxFunction(Vector solution)
+        public double Ground(double node)
         {
-            Vector result = new Vector(systemDimension);
+            //A1A
+            return 0.0;
 
-            result[0] = solution[1];
-            result[1] = ( (solution[1]/solution[0]) * (solution[1] / solution[0]) * solution[0]) + (1.0 / 2.0) * GRAVITATION * solution[0] * solution[0];
-            return result;
-        }
-
-        public Vector NumFlux(Vector left,Vector right)
-        {
-            Vector temp = FluxFunction(left) + FluxFunction(right);
-            return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
+            //A1D
+            //return Math.Sin( (Math.PI / 4.0) * node);
+            //A1C
+            return (Math.Abs(node-10.0) <= 2 ?  Math.Sin( (Math.PI/4.0) * node) : 0.0);
         }
 
         public Vector InhomogenuousPart(Vector solution,double node, double time)
         {
             Vector inhomo = new Vector(systemDimension);
-            //Test
+
+            //Aufgabe 1D
+            //inhomo[0] = 0;
+            //inhomo[1] = -1.0 * GRAVITATION * solution[0] * (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node);
+
+            //Aufgabe 1C)
+            //inhomo[0] = 0.0;
+            //inhomo[1] = -1.0 * GRAVITATION * solution[0];//* (Math.Abs(node - 10.0) <= 2.0 ? (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node) : 0.0);
+
+
+            //Aufgabe 1 A)
             inhomo[0] = 0;
             inhomo[1] = -Math.Cos(node - time) + Math.Cos(time - node) * (GRAVITATION * (-Math.Sin(time - node)) + 2.0 * GRAVITATION + 1.0);
-
-            //Aufgabe 1 - A)
-            //inhomo[0] = 0;
-            //inhomo[1] = -GRAVITATION * solution[0] * 2.0 * Math.PI * Math.Cos(2.0 * Math.PI * (node - time));
-
-            ////Residuum
-            //inhomo[1] += 8.0 * GRAVITATION * Math.PI* Math.Cos(2.0 * Math.PI * (node - time)) + 4.0 * GRAVITATION *Math.PI* Math.Sin(2.0 * Math.PI * (node - time)) * Math.Cos(2.0 * Math.PI * (node - time));
-            //End Aufgabe 1 - A)
 
             return inhomo;
         }
@@ -204,6 +253,35 @@ namespace NSharp.Numerics.DG._1DSystem
             }
             return ExactSolution;
         }
+
+        public Vector FluxFunction(Vector solution)
+        {
+            Vector result = new Vector(systemDimension);
+
+            result[0] = solution[1];
+            result[1] = ((solution[1] / solution[0]) * (solution[1] / solution[0]) * solution[0]) + (1.0 / 2.0) * GRAVITATION * solution[0] * solution[0];
+            return result;
+        }
+
+        public Vector NumFlux(Vector left, Vector right)
+        {
+            Vector temp = FluxFunction(left) + FluxFunction(right);
+            return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
+        }
+
+        public Vector NumFluxECON(Vector left, Vector right)
+        {
+            Vector numFlux = new Vector(2);
+            double vLeft = left[1] / left[0];
+            double vRight = right[1] / right[0];
+
+            numFlux[0] = ((vLeft + vRight) / 2.0) * ((left[0] + right[0]) / 2.0);
+            numFlux[1] = ((vLeft + vRight) / 2.0) * ((vLeft + vRight) / 2.0) * ((left[0] + right[0]) / 2.0)
+                + (1.0 / 2.0) * GRAVITATION * ((left[0] * left[0] + right[0] * right[0]) / 2.0);
+            return numFlux;
+
+        }
+
         private double ComputeMaxEigenWert(Vector left, Vector right)
         {
             List<Vector> boundaryValues = new List<Vector>() { ComputeEigenwert(left), ComputeEigenwert(right) };

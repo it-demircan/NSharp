@@ -1,4 +1,5 @@
-﻿using NSharp.Numerics.DG;
+﻿using NSharp.Converter;
+using NSharp.Numerics.DG;
 using NSharp.Numerics.DG._1DSystem;
 using Structures;
 using System;
@@ -14,6 +15,48 @@ namespace TaskManagement.ThirdProject
 
         public void TestSystemDG()
         {
+            TaskOneEOC();
+            //TaskOneEnergy();
+        }
+
+        public void TaskOneEnergy()
+        {
+            DGSystemController controller = new DGSystemController();
+            controller.createDGElements(16, 3, 0.0, 20.0, 2);
+            Dictionary<double, double> Energy = controller.ComputeSolution(1.0);
+
+
+            Vector time = new Vector(Energy.Count);
+            Vector energyVector = new Vector(Energy.Count);
+            int counter = 0;
+            foreach (KeyValuePair<double, double> entry in Energy)
+            {
+                time[counter] = entry.Key;
+                energyVector[counter] = entry.Value;
+                counter++;
+                Console.WriteLine("Time:" + entry.Key + " Energy:" + entry.Value);
+            }
+
+            //string matlabString = MatLabConverter.ConvertToMatLabPlotStringWithAxisLabelAndTitle(time, energyVector, "Zeit t", "Energie e", "Energieverlauf");
+
+        }
+
+
+        private void TaskOneWellBalanced()
+        {
+            DGSystemController controller = new DGSystemController();
+            controller.createDGElements(100, 3, 0.0, 20.0, 2);
+            Dictionary<double, double> Energy = controller.ComputeSolution(1.0);
+
+            Console.WriteLine(controller.ComputeConstant().toString(15));
+            Vector nodes = controller.GetOriginNodes();
+            Vector constant = controller.ComputeConstant();
+
+            string matlabString = MatLabConverter.ConvertToMatLabPlotStringWithAxisLabelAndTitle(nodes, constant, "Ort x", "h+b", "Well-Balanced Test");
+        }
+
+        private void TaskOneEOC()
+        {
             Matrix error = new Matrix(9, 1);
             for (int i = 1; i < 10; i++)
             {
@@ -25,7 +68,7 @@ namespace TaskManagement.ThirdProject
 
                 Vector diff = approx.GetColumn(0) - exact.GetColumn(0);
                 double err = diff.GetMaxAbsValue();
-                Console.WriteLine("Error:" + err + "   i = "+i);
+                Console.WriteLine("Error:" + err + "   i = " + i);
                 error[i - 1, 0] = err;
             }
 

@@ -132,6 +132,32 @@ namespace NSharp.Numerics.DG._1DSystem
                 surface = surface - volume;
 
                 timeDerivate = -1.0 * InvMassMatrix * B * surface - DifferentialMatrix * volume;
+
+
+                //Aufgabe 2
+                if (sysIdx == 1)
+                {
+                    Vector v = new Vector(N + 1);
+                    Vector v2 = new Vector(N + 1);
+                    Vector h = SolutionSystem.GetColumn(0);
+                    Vector h2 = new Vector(N + 1);
+                    Vector hv = SolutionSystem.GetColumn(1);
+                    for (int i = 0; i < N + 1; i++)
+                    {
+                        v[i] = hv[i] / h[i];
+                        h2[i] = h[i] * h[i];
+                        v2[i] = v[i] * v[i];
+                    }
+
+                    timeDerivate -= (Vector)(1.0 / 2.0 * ((-1.0 * DifferentialMatrix * new Matrix(SolutionSystem.GetColumn(0)) * v2)
+                        + new Matrix(SolutionSystem.GetColumn(0)) * new Matrix(v) * DifferentialMatrix * v
+                        + new Matrix(v) * DifferentialMatrix * new Matrix(h) * v)
+                        );
+
+                    timeDerivate -= (Vector)((9.812 / 2.0) * (-1.0 * DifferentialMatrix * h2 + 2.0 * new Matrix(h) * DifferentialMatrix * h));
+                }
+                //Ende Aufgabe 2
+
                 timeDerivate = (Vector)((2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * timeDerivate);
                 timeDerivate += Inhomogenuous.GetColumn(sysIdx);
                 
@@ -147,6 +173,47 @@ namespace NSharp.Numerics.DG._1DSystem
         }
 
 
+        public Vector ComputeMass()
+        {
+            Vector massVector = !(MassMatrix *((rightSpaceBoundary - leftSpaceBoundary)/2.0)*SolutionSystem) * (new Vector(MassMatrix.NoRows, VectorType.ONES)) ;
+            return massVector;
+        }
+
+        public Vector GetConstantSolution(Func<double,double> ground)
+        {
+            Vector origin = GetOriginNodes();
+            Vector constant = new Vector(N + 1);
+            Vector solution = SolutionSystem.GetColumn(0);
+
+            for(int i= 0; i < N+1; i++)
+            {
+                constant[i] = solution[i] + ground(origin[i]);
+            }
+            return constant;
+        }
+
+        public double ComputeEnergy(double Gravitation, Func<double,double> ground)
+        {
+            double energy = 0;
+            Vector v = new Vector(N + 1);
+            Vector h = SolutionSystem.GetColumn(0);
+            Vector hv = SolutionSystem.GetColumn(1);
+            Vector EnergyVector = new Vector(N + 1);
+            Vector originNodes = GetOriginNodes();
+
+            for (int i = 0; i < N + 1; i++) {
+                v[i] = hv[i] / h[i];
+                EnergyVector[i] = 1.0 / 2.0 * h[i] * v[i] * v[i] + 1.0 / 2.0 * Gravitation * h[i] * h[i] + Gravitation * h[i] * ground(originNodes[i]);
+            }
+
+            Vector scaledEnergyVector = (Vector) (((rightSpaceBoundary - leftSpaceBoundary) / 2.0) * EnergyVector);
+            energy = new Vector(N+1, VectorType.ONES)*MassMatrix * scaledEnergyVector;
+            //energy = scaledEnergyVector * MassMatrix * scaledEnergyVector;
+
+            return energy;
+        }
+
+
         public Matrix GetSolution()
         {
             return SolutionSystem;
@@ -156,18 +223,38 @@ namespace NSharp.Numerics.DG._1DSystem
             Matrix InhomogMatrix = new Matrix(N + 1, SystemDimension);
             Vector evaluationNodes = new Vector(SystemDimension);
             Vector solutionAtNode = new Vector(SystemDimension);
-            
-            for(int i = 0; i < N + 1; i++)
+
+
+            //TODO-REMOVE
+            Vector Derivative = ComputeDerivative();
+
+            for (int i = 0; i < N + 1; i++)
             {
                 for (int m = 0; m < SystemDimension; m++)
                 {
                     evaluationNodes[m] = MapToOriginSpace(nodes[i]);                  
                 }
                 solutionAtNode = SolutionSystem.GetRowAsColumnVector(i);
+                //TODO: REMOVE
+                solutionAtNode[0] *= Derivative[i];
                 Vector res = InhomogenuousFunction(solutionAtNode,evaluationNodes[0], time);
                 InhomogMatrix.InjectMatrixAtPosition(!res, i, 0);
             }
             return InhomogMatrix;
+        }
+
+        private Vector ComputeDerivative()
+        {
+            Vector dBoden = new Vector(N + 1);
+            Vector origin = GetOriginNodes();
+            for (int i = 0; i < N + 1; i++)
+                dBoden[i] = Math.Abs(origin[i]-10)<=2.0 ? Math.Sin( (Math.PI / 4.0)* origin[i]) : 0.0;
+
+            Vector derivative = (2.0/(rightSpaceBoundary-leftSpaceBoundary))* DifferentialMatrix * dBoden;
+
+            //AufgabeA
+            return new Vector(N + 1);
+            return derivative;
         }
 
         private Matrix ComputeStartSolution()
