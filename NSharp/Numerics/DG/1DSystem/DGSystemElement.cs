@@ -34,6 +34,7 @@ namespace NSharp.Numerics.DG._1DSystem
         Matrix VolumeMatrix;
         Matrix SurfaceMatrix;
         DGMODE myMode;
+        CalculationMode calcMode;
 
         Func<Vector, Vector, Vector> NumericalFluxFunction;
         Func<Vector, double, double, Vector> InhomogenuousFunction;
@@ -44,8 +45,9 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector RightBoarderValue { get; set; }
 
 
-        public DGSystemElement(DGMODE myMode, double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
+        public DGSystemElement(DGMODE myMode,CalculationMode calcMode, double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
         {
+            this.calcMode = calcMode;
             this.leftSpaceBoundary = leftSpaceBoundary;
             this.rightSpaceBoundary = rightSpaceBoundary;
             this.N = polynomOrder;
@@ -214,7 +216,6 @@ namespace NSharp.Numerics.DG._1DSystem
 
             Vector scaledEnergyVector = (Vector) (((rightSpaceBoundary - leftSpaceBoundary) / 2.0) * EnergyVector);
             energy = new Vector(N+1, VectorType.ONES)*MassMatrix * scaledEnergyVector;
-            //energy = scaledEnergyVector * MassMatrix * scaledEnergyVector;
 
             return energy;
         }
@@ -230,8 +231,6 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector evaluationNodes = new Vector(SystemDimension);
             Vector solutionAtNode = new Vector(SystemDimension);
 
-
-            //TODO-REMOVE
             Vector Derivative = ComputeDerivative();
 
             for (int i = 0; i < N + 1; i++)
@@ -241,8 +240,9 @@ namespace NSharp.Numerics.DG._1DSystem
                     evaluationNodes[m] = MapToOriginSpace(nodes[i]);                  
                 }
                 solutionAtNode = SolutionSystem.GetRowAsColumnVector(i);
-                //TODO: REMOVE
-                solutionAtNode[0] *= Derivative[i];
+
+                if(calcMode == CalculationMode.Energy)
+                    solutionAtNode[0] *= Derivative[i];
                 Vector res = InhomogenuousFunction(solutionAtNode,evaluationNodes[0], time);
                 InhomogMatrix.InjectMatrixAtPosition(!res, i, 0);
             }
@@ -251,13 +251,20 @@ namespace NSharp.Numerics.DG._1DSystem
 
         private Vector ComputeDerivative()
         {
-            Vector dBoden = new Vector(N + 1);
-            Vector origin = GetOriginNodes();
-            for (int i = 0; i < N + 1; i++)
-                dBoden[i] = Math.Abs(origin[i]-10)<=2.0 ? Math.Sin( (Math.PI / 4.0)* origin[i]) : 0.0;
+            Vector derivative;
+            if (calcMode == CalculationMode.Energy)
+            {
+                Vector dBoden = new Vector(N + 1);
+                Vector origin = GetOriginNodes();
+                for (int i = 0; i < N + 1; i++)
+                    dBoden[i] = Math.Abs(origin[i] - 10) <= 2.0 ? Math.Sin((Math.PI / 4.0) * origin[i]) : 0.0;
 
-            Vector derivative = (2.0/(rightSpaceBoundary-leftSpaceBoundary))* DifferentialMatrix * dBoden;
+                derivative = (2.0 / (rightSpaceBoundary - leftSpaceBoundary)) * DifferentialMatrix * dBoden;
 
+            }else
+            {
+                derivative = new Vector(N + 1, VectorType.ONES);
+            }
             //AufgabeA
             return derivative;
         }

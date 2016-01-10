@@ -15,8 +15,8 @@ namespace TaskManagement.ThirdProject
 
         public void TestSystemDG()
         {
-            //TaskOneEOC();
-            TaskOneEnergy();
+            TaskOneEOC();
+            //TaskOneEnergy();
         }
 
         public void TaskOneEnergy()
@@ -61,7 +61,7 @@ namespace TaskManagement.ThirdProject
         private void TaskOneEOC()
         {
             Matrix error = new Matrix(9, 1);
-            for (int i = 1; i < 10; i++)
+            for (int i = 1; i < 8; i++)
             {
                 DGSystemController controller = new DGSystemController();
                 controller.createDGElements((int)Math.Pow(2.0, i), 3, 0.0, Math.PI * 2.0, 2);

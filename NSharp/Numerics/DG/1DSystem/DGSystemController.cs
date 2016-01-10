@@ -24,13 +24,15 @@ namespace NSharp.Numerics.DG._1DSystem
         double spaceLengthInElements;
         CalculationMode calcMode;
         Task myTask;
+
+        const double CFL = 0.5;
        
         DGSystemElement[] elements;
 
 
         public void createDGElements(int numberOfDGElements, int polynomOrder, double leftBoundary, double rightBoundary, int systemDimension)
         {
-            calcMode = CalculationMode.Energy;
+            calcMode = CalculationMode.EOC;
             myTask = Task.TaskOne;
 
             this.polynomOrder = polynomOrder;
@@ -43,9 +45,9 @@ namespace NSharp.Numerics.DG._1DSystem
                 double rightSpaceBorder = leftBoundary + (double)(i + 1) * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
 
                 if (myTask ==Task.TaskOne)
-                    elements[i] = new DGSystemElement(DGMODE.STRONG,  leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
+                    elements[i] = new DGSystemElement(DGMODE.STRONG, calcMode, leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
                 else if(myTask == Task.TaskTwo)
-                    elements[i] = new DGSystemElement(DGMODE.ECON,leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
+                    elements[i] = new DGSystemElement(DGMODE.ECON, calcMode,leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
                 if (i > 0)
                 {
                     elements[i].LeftNeighbour = elements[i - 1];
@@ -93,7 +95,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.1, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(CFL, lambdaMax);
                 }
                 //Console.WriteLine("RecentTime: " + recentTime);
 
@@ -208,7 +210,7 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector result = new Vector(systemDimension);
 
             //Aufgabe 1D)
-            if(calcMode == CalculationMode.EOC)
+            if(calcMode == CalculationMode.WellBalanced)
             {
                 result[0] = 3.0 - Ground(nodes[0]);
                 result[1] = 0.0;
@@ -229,12 +231,16 @@ namespace NSharp.Numerics.DG._1DSystem
         public double Ground(double node)
         {
             //A1A
-            //return 0.0;
-
-            //A1D
-            //return Math.Sin( (Math.PI / 4.0) * node);
-            //A1C
-            return (Math.Abs(node-10.0) <= 2 ?  Math.Sin( (Math.PI/4.0) * node) : 0.0);
+            if(calcMode == CalculationMode.EOC)
+                return 0.0;
+            else if (calcMode == CalculationMode.Energy)
+            {
+                return (Math.Abs(node - 10.0) <= 2 ? Math.Sin((Math.PI / 4.0) * node) : 0.0);
+            }
+            else
+            {
+                return Math.Sin((Math.PI / 4.0) * node);
+            }   
         }
 
         public Vector InhomogenuousPart(Vector solution,double node, double time)
