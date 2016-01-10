@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 
 namespace NSharp.Numerics.DG._1DSystem
 {
+
+    public enum DGMODE
+    {
+        STRONG, ECON
+    }
     public class DGSystemElement
     {
         public DGSystemElement LeftNeighbour, RightNeighbour;
@@ -28,6 +33,7 @@ namespace NSharp.Numerics.DG._1DSystem
 
         Matrix VolumeMatrix;
         Matrix SurfaceMatrix;
+        DGMODE myMode;
 
         Func<Vector, Vector, Vector> NumericalFluxFunction;
         Func<Vector, double, double, Vector> InhomogenuousFunction;
@@ -38,7 +44,7 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector RightBoarderValue { get; set; }
 
 
-        public DGSystemElement(double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
+        public DGSystemElement(DGMODE myMode, double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
         {
             this.leftSpaceBoundary = leftSpaceBoundary;
             this.rightSpaceBoundary = rightSpaceBoundary;
@@ -48,8 +54,8 @@ namespace NSharp.Numerics.DG._1DSystem
             this.NumericalFluxFunction = NumericalFluxFunction;
             this.InhomogenuousFunction = InhomogenuousFunction;
             this.InitialFunction = InitialFunction;
-
-            Initialize();
+            this.myMode = myMode;
+            Initialize();   
         }
 
         public void Initialize() {
@@ -135,7 +141,7 @@ namespace NSharp.Numerics.DG._1DSystem
 
 
                 //Aufgabe 2
-                if (sysIdx == 1)
+                if (myMode == DGMODE.ECON && sysIdx == 1)
                 {
                     Vector v = new Vector(N + 1);
                     Vector v2 = new Vector(N + 1);
@@ -253,7 +259,6 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector derivative = (2.0/(rightSpaceBoundary-leftSpaceBoundary))* DifferentialMatrix * dBoden;
 
             //AufgabeA
-            return new Vector(N + 1);
             return derivative;
         }
 

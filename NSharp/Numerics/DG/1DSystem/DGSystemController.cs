@@ -7,17 +7,32 @@ using System.Threading.Tasks;
 
 namespace NSharp.Numerics.DG._1DSystem
 {
+    public enum CalculationMode
+    {
+        EOC, Energy, WellBalanced
+    }
+
+    public enum Task
+    {
+        TaskOne, TaskTwo, TaskThree
+    }
+
     public class DGSystemController
     {
         int polynomOrder;//N
         int systemDimension;
         double spaceLengthInElements;
+        CalculationMode calcMode;
+        Task myTask;
        
         DGSystemElement[] elements;
 
 
         public void createDGElements(int numberOfDGElements, int polynomOrder, double leftBoundary, double rightBoundary, int systemDimension)
         {
+            calcMode = CalculationMode.Energy;
+            myTask = Task.TaskOne;
+
             this.polynomOrder = polynomOrder;
             this.systemDimension = systemDimension;
             spaceLengthInElements = (rightBoundary - leftBoundary) / (double)numberOfDGElements;
@@ -26,10 +41,11 @@ namespace NSharp.Numerics.DG._1DSystem
             {
                 double leftSpaceBorder = leftBoundary + (double)i * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
                 double rightSpaceBorder = leftBoundary + (double)(i + 1) * (rightBoundary - leftBoundary) / (double)numberOfDGElements;
-                //Aufgabe 1
-                //elements[i] = new DGSystemElement(leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
-                //Aufgabe2
-                elements[i] = new DGSystemElement(leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
+
+                if (myTask ==Task.TaskOne)
+                    elements[i] = new DGSystemElement(DGMODE.STRONG,  leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
+                else if(myTask == Task.TaskTwo)
+                    elements[i] = new DGSystemElement(DGMODE.ECON,leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
                 if (i > 0)
                 {
                     elements[i].LeftNeighbour = elements[i - 1];
@@ -77,7 +93,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 if (timeStep == 0.0)
                 {
                     double lambdaMax = GetMaximumLambdaOverall();
-                    recentTimeStep = ComputeTimeStep(0.5, lambdaMax);
+                    recentTimeStep = ComputeTimeStep(0.1, lambdaMax);
                 }
                 //Console.WriteLine("RecentTime: " + recentTime);
 
@@ -87,6 +103,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 for (int i = 0; i < elements.Length; i++)
                     recentTimeDerivatives[i] = new Matrix(polynomOrder + 1, systemDimension);
 
+                energys.Add(recentTime, this.ComputeEnergy());
                 //Runge Kutte
                 for (int k = 0; k < 5; k++)
                 {
@@ -111,8 +128,7 @@ namespace NSharp.Numerics.DG._1DSystem
                     {
                         elements[i].UpdateBorderValues();
                     }
-                }
-                energys.Add(recentTime, this.ComputeEnergy());
+                }            
                 recentTime += recentTimeStep;
             }
 
@@ -155,9 +171,13 @@ namespace NSharp.Numerics.DG._1DSystem
         public double ComputeEnergy()
         {
             double energy = 0.0;
+            int counter = 1;
             foreach (DGSystemElement element in elements)
             {
+                double inte= element.ComputeEnergy(GRAVITATION, Ground);
+                //Console.WriteLine("Integral CellNo:"+ counter +" Int:" + inte);
                 energy +=  element.ComputeEnergy(GRAVITATION, Ground);
+                counter++;
             }
             return energy;
         }
@@ -188,23 +208,28 @@ namespace NSharp.Numerics.DG._1DSystem
             Vector result = new Vector(systemDimension);
 
             //Aufgabe 1D)
-            //result[0] = 3.0-Ground(nodes[0]);
-            //result[1] = 0.0;
-
-            //Aufgabe 1C)
-            //result[0] = nodes[0] <= 10.0 ? 3.0 - Ground(nodes[0]) : 2.5 - Ground(nodes[0]);
-            //result[1] = 0.0;
-
-            //Aufgabe 1A)
-            result[0] = Math.Sin(nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
-            result[1] = result[0];
+            if(calcMode == CalculationMode.EOC)
+            {
+                result[0] = 3.0 - Ground(nodes[0]);
+                result[1] = 0.0;
+            }
+            else if(calcMode == CalculationMode.Energy)
+            {
+                result[0] = nodes[0] <= 10.0 ? 3.0 - Ground(nodes[0]) : 2.5 - Ground(nodes[0]);
+                result[1] = 0.0;
+            }
+            else
+            {   //EOC
+                result[0] = Math.Sin(nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
+                result[1] = result[0];
+            }
             return result;
         }
 
         public double Ground(double node)
         {
             //A1A
-            return 0.0;
+            //return 0.0;
 
             //A1D
             //return Math.Sin( (Math.PI / 4.0) * node);
@@ -215,19 +240,22 @@ namespace NSharp.Numerics.DG._1DSystem
         public Vector InhomogenuousPart(Vector solution,double node, double time)
         {
             Vector inhomo = new Vector(systemDimension);
+            if (calcMode == CalculationMode.WellBalanced)
+            {
+                //Aufgabe 1D
+                inhomo[0] = 0;
+                inhomo[1] = -1.0 * GRAVITATION * solution[0] * (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node);
+            }else if(calcMode == CalculationMode.Energy)
+            {   //ENERGY
+                inhomo[0] = 0.0;
+                inhomo[1] = -1.0 * GRAVITATION * solution[0];//* (Math.Abs(node - 10.0) <= 2.0 ? (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node) : 0.0);
+            }
+            else
+            {   //EOC
+                inhomo[0] = 0;
+                inhomo[1] = -Math.Cos(node - time) + Math.Cos(time - node) * (GRAVITATION * (-Math.Sin(time - node)) + 2.0 * GRAVITATION + 1.0);
 
-            //Aufgabe 1D
-            //inhomo[0] = 0;
-            //inhomo[1] = -1.0 * GRAVITATION * solution[0] * (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node);
-
-            //Aufgabe 1C)
-            //inhomo[0] = 0.0;
-            //inhomo[1] = -1.0 * GRAVITATION * solution[0];//* (Math.Abs(node - 10.0) <= 2.0 ? (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node) : 0.0);
-
-
-            //Aufgabe 1 A)
-            inhomo[0] = 0;
-            inhomo[1] = -Math.Cos(node - time) + Math.Cos(time - node) * (GRAVITATION * (-Math.Sin(time - node)) + 2.0 * GRAVITATION + 1.0);
+            }
 
             return inhomo;
         }
@@ -294,8 +322,8 @@ namespace NSharp.Numerics.DG._1DSystem
             double h = evaluated[0];
             double hv = evaluated[1];
             Vector Eigenvalues = new Vector(2);
-            Eigenvalues[0] = hv / h + Math.Sqrt(GRAVITATION * h);
-            Eigenvalues[1] = hv / h - Math.Sqrt(GRAVITATION * h);
+            Eigenvalues[0] = hv/h + Math.Sqrt(GRAVITATION * h);
+            Eigenvalues[1] = hv/h - Math.Sqrt(GRAVITATION * h);
             return Eigenvalues;
         }
         public double ComputeMaxAbsolutEigenvalue(List<Vector> vectorsWithEigenvalues)
@@ -312,7 +340,6 @@ namespace NSharp.Numerics.DG._1DSystem
                     }
                 }
             }
-
             return maxEigenValue;
         }
 
@@ -330,7 +357,11 @@ namespace NSharp.Numerics.DG._1DSystem
                 }
             }
 
-            maxEigenvalue = ComputeMaxAbsolutEigenvalue(AllEvaluations);
+            List<Vector> EigenValues = new List<Vector>();
+            for (int i = 0; i < AllEvaluations.Count; i++)
+                EigenValues.Add(ComputeEigenwert(AllEvaluations.ElementAt(i)));
+
+            maxEigenvalue = ComputeMaxAbsolutEigenvalue(EigenValues);
             return maxEigenvalue;
         }
 

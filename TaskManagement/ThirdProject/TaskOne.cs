@@ -15,14 +15,17 @@ namespace TaskManagement.ThirdProject
 
         public void TestSystemDG()
         {
-            TaskOneEOC();
-            //TaskOneEnergy();
+            //TaskOneEOC();
+            TaskOneEnergy();
         }
 
         public void TaskOneEnergy()
         {
             DGSystemController controller = new DGSystemController();
-            controller.createDGElements(16, 3, 0.0, 20.0, 2);
+            controller.createDGElements(101, 3, 0.0, 20.0, 2);
+
+            double test = controller.ComputeEnergy();
+            Console.WriteLine(test);
             Dictionary<double, double> Energy = controller.ComputeSolution(1.0);
 
 
