@@ -9,7 +9,7 @@ namespace NSharp.Numerics.DG._1DSystem
 {
     public enum CalculationMode
     {
-        EOC, Energy, WellBalanced
+        EOC, Energy, WellBalanced, Stone
     }
 
     public enum Task
@@ -25,15 +25,15 @@ namespace NSharp.Numerics.DG._1DSystem
         CalculationMode calcMode;
         Task myTask;
 
-        const double CFL = 0.5;
+        const double CFL = 1.45;
        
         DGSystemElement[] elements;
 
 
         public void createDGElements(int numberOfDGElements, int polynomOrder, double leftBoundary, double rightBoundary, int systemDimension)
         {
-            calcMode = CalculationMode.EOC;
-            myTask = Task.TaskOne;
+            calcMode = CalculationMode.Stone;
+            myTask = Task.TaskTwo;
 
             this.polynomOrder = polynomOrder;
             this.systemDimension = systemDimension;
@@ -48,6 +48,9 @@ namespace NSharp.Numerics.DG._1DSystem
                     elements[i] = new DGSystemElement(DGMODE.STRONG, calcMode, leftSpaceBorder, rightSpaceBorder, polynomOrder,systemDimension, NumFlux, InhomogenuousPart, FluxFunction, InitialFunction);
                 else if(myTask == Task.TaskTwo)
                     elements[i] = new DGSystemElement(DGMODE.ECON, calcMode,leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxECON, InhomogenuousPart, FluxFunction, InitialFunction);
+                else if(myTask == Task.TaskThree)
+                    elements[i] = new DGSystemElement(DGMODE.ECON, calcMode, leftSpaceBorder, rightSpaceBorder, polynomOrder, systemDimension, NumFluxES, InhomogenuousPart, FluxFunction, InitialFunction);
+
                 if (i > 0)
                 {
                     elements[i].LeftNeighbour = elements[i - 1];
@@ -55,16 +58,37 @@ namespace NSharp.Numerics.DG._1DSystem
                 }
             }
 
-            //Periodic Boundary Condition
-            if (numberOfDGElements > 1)
-            {
-                elements[0].LeftNeighbour = elements[numberOfDGElements - 1];
-                elements[numberOfDGElements - 1].RightNeighbour = elements[0];
+           
+            if (calcMode != CalculationMode.Stone)
+            {   //Periodic Boundary Condition
+                if (numberOfDGElements > 1)
+                {
+                    elements[0].LeftNeighbour = elements[numberOfDGElements - 1];
+                    elements[numberOfDGElements - 1].RightNeighbour = elements[0];
+                }
+                else
+                {
+                    elements[0].LeftNeighbour = elements[0];
+                    elements[0].RightNeighbour = elements[0];
+                }
             }
             else
             {
-                elements[0].LeftNeighbour = elements[0];
-                elements[0].RightNeighbour = elements[0];
+                //Dirichlet 
+                DGSystemElement dummy = new DGSystemElement(DGMODE.ECON, calcMode, 0.0, 0.0, polynomOrder, systemDimension, NumFluxES, InhomogenuousPart, FluxFunction, InitialFunction);
+                Vector leftDirichletBoundary = new Vector(2);
+                leftDirichletBoundary[0] = 1.1;
+                leftDirichletBoundary[1] = leftDirichletBoundary[0] * -0.525;
+                
+                Vector rightDirichletBoundary = new Vector(2);
+                rightDirichletBoundary[0] = 1.1;
+                rightDirichletBoundary[1] = rightDirichletBoundary[0] * 0.525;
+
+                dummy.RightBoarderValue = leftDirichletBoundary;
+                dummy.LeftBoarderValue = rightDirichletBoundary;
+
+                elements[0].LeftNeighbour = dummy;
+                elements[numberOfDGElements - 1].RightNeighbour = dummy;
             }
         }
 
@@ -104,7 +128,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 //Vektoren zurüksetzen
                 for (int i = 0; i < elements.Length; i++)
                     recentTimeDerivatives[i] = new Matrix(polynomOrder + 1, systemDimension);
-
+                Console.WriteLine("TIME: " + recentTime + "\t\t ENERGY: " + this.ComputeEnergy());
                 energys.Add(recentTime, this.ComputeEnergy());
                 //Runge Kutte
                 for (int k = 0; k < 5; k++)
@@ -168,7 +192,7 @@ namespace NSharp.Numerics.DG._1DSystem
           Problem Abhängige Funktionen
         **/
 
-        const double GRAVITATION = 9.812;
+        public static double GRAVITATION = 1.0;
 
         public double ComputeEnergy()
         {
@@ -205,7 +229,7 @@ namespace NSharp.Numerics.DG._1DSystem
             return constant;
         }
 
-        public Vector InitialFunction(Vector nodes)
+        public Vector InitialFunction(Vector nodes, bool fromLeft = true)
         {
             Vector result = new Vector(systemDimension);
 
@@ -220,10 +244,15 @@ namespace NSharp.Numerics.DG._1DSystem
                 result[0] = nodes[0] <= 10.0 ? 3.0 - Ground(nodes[0]) : 2.5 - Ground(nodes[0]);
                 result[1] = 0.0;
             }
-            else
+            else if(calcMode ==CalculationMode.EOC)
             {   //EOC
                 result[0] = Math.Sin(nodes[0]) + 2.0;//Math.Sin(2*Math.PI*nodes[0])+2.0;
                 result[1] = result[0];
+            }
+            else if(calcMode == CalculationMode.Stone)
+            {
+                result[0] = 1.1 - Ground(nodes[0]);
+                result[1] = (nodes[0] <= 5.0 && fromLeft ? -0.525 : 0.525)* result[0];
             }
             return result;
         }
@@ -233,11 +262,11 @@ namespace NSharp.Numerics.DG._1DSystem
             //A1A
             if(calcMode == CalculationMode.EOC)
                 return 0.0;
-            else if (calcMode == CalculationMode.Energy)
+            else if (calcMode == CalculationMode.Energy || calcMode == CalculationMode.Stone)
             {
                 return (Math.Abs(node - 10.0) <= 2 ? Math.Sin((Math.PI / 4.0) * node) : 0.0);
             }
-            else
+            else//WellBalanced
             {
                 return Math.Sin((Math.PI / 4.0) * node);
             }   
@@ -251,7 +280,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 //Aufgabe 1D
                 inhomo[0] = 0;
                 inhomo[1] = -1.0 * GRAVITATION * solution[0] * (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node);
-            }else if(calcMode == CalculationMode.Energy)
+            }else if(calcMode == CalculationMode.Energy || calcMode == CalculationMode.Stone)
             {   //ENERGY
                 inhomo[0] = 0.0;
                 inhomo[1] = -1.0 * GRAVITATION * solution[0];//* (Math.Abs(node - 10.0) <= 2.0 ? (Math.PI / 4.0) * Math.Cos((Math.PI / 4.0) * node) : 0.0);
@@ -297,13 +326,13 @@ namespace NSharp.Numerics.DG._1DSystem
             return result;
         }
 
-        public Vector NumFlux(Vector left, Vector right)
+        public Vector NumFlux(Vector left, Vector right, double node)
         {
             Vector temp = FluxFunction(left) + FluxFunction(right);
             return (Vector)((1.0 / 2.0) * temp) - (Vector)((ComputeMaxEigenWert(left, right) / 2.0) * (right - left));
         }
 
-        public Vector NumFluxECON(Vector left, Vector right)
+        public Vector NumFluxECON(Vector left, Vector right, double node)
         {
             Vector numFlux = new Vector(2);
             double vLeft = left[1] / left[0];
@@ -314,6 +343,65 @@ namespace NSharp.Numerics.DG._1DSystem
                 + (1.0 / 2.0) * GRAVITATION * ((left[0] * left[0] + right[0] * right[0]) / 2.0);
             return numFlux;
 
+        }
+
+        public Vector NumFluxES(Vector left, Vector right, double node)
+        {
+            Vector result = new Vector(2);
+            Vector econ = NumFluxECON(left, right, node);
+
+            //Mitterlwert berechnen fuer A und R
+            //Matrix R = (1.0 / 2.0) * (ComputeRMatrix(right) + ComputeRMatrix(left));
+            //Vector eigenValues = (Vector)((1.0/2.0)* (ComputeEigenwert(right) + ComputeEigenwert(left)));
+            //Matrix A = new Matrix(2, 2);
+            //A[0, 0] = eigenValues[1];
+            //A[1, 1] = eigenValues[0];
+
+            //Vector test = (Vector)((1.0 / 2.0) * (right + left));
+            //Matrix R = ComputeRMatrix(test);
+
+            //Matrix A = new Matrix(2, 2);
+            //A[0, 0] = Math.Abs(eigenValues[1]);
+            //A[1, 1] = Math.Abs(eigenValues[0]);
+
+            Vector eigenValues = ComputeEigenwert((Vector)((1.0 / 2.0) * (right + left)));
+            double negEW = eigenValues[1];
+            double posEW = eigenValues[0];
+
+            Vector deriEnergy = ComputeEnergyDerivative(right, node) - ComputeEnergyDerivative(left, node);
+            Vector esVector = new Vector(2);
+            esVector[0] = (1.0 / (4.0 * GRAVITATION)) * (((Math.Abs(negEW) + Math.Abs(posEW)) * deriEnergy[0]) + (Math.Abs(negEW) * negEW + Math.Abs(posEW) * posEW) * deriEnergy[1]);
+            esVector[1] = (1.0 / (4.0 * GRAVITATION)) * ((Math.Abs(negEW) * negEW + Math.Abs(posEW) * posEW) * deriEnergy[0] + (Math.Abs(negEW) * negEW * negEW + Math.Abs(posEW) * posEW * posEW) * deriEnergy[1]);
+
+            result = econ - esVector;
+            return result;
+        }
+
+        private Matrix ComputeRMatrix(Vector vector)
+        {
+            double h = vector[0];
+            double hv = vector[1];
+            Vector eigenVectorNegativ = new Vector(2);
+            Vector eigenVectorPositiv = new Vector(2);
+            eigenVectorNegativ[0] = -(h / ((Math.Sqrt(GRAVITATION * h * h * h)) - hv));
+            eigenVectorNegativ[1] = 1.0;
+
+            eigenVectorPositiv[0] = (h / ((Math.Sqrt(GRAVITATION * h * h * h)) + hv));
+            eigenVectorPositiv[1] = 1.0;
+
+            Matrix R = new Matrix(2, 2);
+            R.InjectMatrixAtPosition(eigenVectorNegativ, 0, 0);
+            R.InjectMatrixAtPosition(eigenVectorPositiv, 0, 1);
+
+            return R;
+        }
+
+        private Vector ComputeEnergyDerivative(Vector vector, double node)
+        {
+            Vector result = new Vector(2);
+            result[0] = -(1.0 / 2.0) * ((vector[1] * vector[1]) / (vector[0] * vector[0])) + GRAVITATION * vector[0] + GRAVITATION * Ground(node);
+            result[1] = vector[1] / vector[0];
+            return result;
         }
 
         private double ComputeMaxEigenWert(Vector left, Vector right)

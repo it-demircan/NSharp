@@ -36,16 +36,18 @@ namespace NSharp.Numerics.DG._1DSystem
         DGMODE myMode;
         CalculationMode calcMode;
 
-        Func<Vector, Vector, Vector> NumericalFluxFunction;
+        Func<Vector, Vector, double, Vector> NumericalFluxFunction;
         Func<Vector, double, double, Vector> InhomogenuousFunction;
         Func<Vector, Vector> FluxFunction;
-        Func<Vector, Vector> InitialFunction;
+        Func<Vector,bool, Vector> InitialFunction;
 
         public Vector LeftBoarderValue { get; set; }
         public Vector RightBoarderValue { get; set; }
 
+        double GRAVITATION = DGSystemController.GRAVITATION;
 
-        public DGSystemElement(DGMODE myMode,CalculationMode calcMode, double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector, Vector> InitialFunction)
+
+        public DGSystemElement(DGMODE myMode,CalculationMode calcMode, double leftSpaceBoundary, double rightSpaceBoundary, int polynomOrder,int systemDimension, Func<Vector, Vector, double, Vector> NumericalFluxFunction, Func<Vector,double, double, Vector> InhomogenuousFunction, Func<Vector, Vector> FluxFunction, Func<Vector,bool, Vector> InitialFunction)
         {
             this.calcMode = calcMode;
             this.leftSpaceBoundary = leftSpaceBoundary;
@@ -91,8 +93,8 @@ namespace NSharp.Numerics.DG._1DSystem
 
             Matrix SystemTimeDerivative = new Matrix(N + 1, SystemDimension);
 
-            Vector NumFluxLeft = NumericalFluxFunction(LeftNeighbour.RightBoarderValue, this.LeftBoarderValue);
-            Vector NumFluxRight = NumericalFluxFunction(this.RightBoarderValue, RightNeighbour.LeftBoarderValue);
+            Vector NumFluxLeft = NumericalFluxFunction(LeftNeighbour.RightBoarderValue, this.LeftBoarderValue, this.leftSpaceBoundary);
+            Vector NumFluxRight = NumericalFluxFunction(this.RightBoarderValue, RightNeighbour.LeftBoarderValue, this.rightSpaceBoundary);
 
 
             for(int i = 0; i < N + 1; i++)
@@ -161,8 +163,8 @@ namespace NSharp.Numerics.DG._1DSystem
                         + new Matrix(SolutionSystem.GetColumn(0)) * new Matrix(v) * DifferentialMatrix * v
                         + new Matrix(v) * DifferentialMatrix * new Matrix(h) * v)
                         );
-
-                    timeDerivate -= (Vector)((9.812 / 2.0) * (-1.0 * DifferentialMatrix * h2 + 2.0 * new Matrix(h) * DifferentialMatrix * h));
+                   
+                    timeDerivate -= (Vector)((GRAVITATION / 2.0) * (-1.0 * DifferentialMatrix * h2 + 2.0 * new Matrix(h) * DifferentialMatrix * h));
                 }
                 //Ende Aufgabe 2
 
@@ -241,7 +243,7 @@ namespace NSharp.Numerics.DG._1DSystem
                 }
                 solutionAtNode = SolutionSystem.GetRowAsColumnVector(i);
 
-                if(calcMode == CalculationMode.Energy)
+                if(calcMode == CalculationMode.Energy || calcMode == CalculationMode.Stone)
                     solutionAtNode[0] *= Derivative[i];
                 Vector res = InhomogenuousFunction(solutionAtNode,evaluationNodes[0], time);
                 InhomogMatrix.InjectMatrixAtPosition(!res, i, 0);
@@ -252,7 +254,7 @@ namespace NSharp.Numerics.DG._1DSystem
         private Vector ComputeDerivative()
         {
             Vector derivative;
-            if (calcMode == CalculationMode.Energy)
+            if (calcMode == CalculationMode.Energy || calcMode == CalculationMode.Stone)
             {
                 Vector dBoden = new Vector(N + 1);
                 Vector origin = GetOriginNodes();
@@ -281,8 +283,8 @@ namespace NSharp.Numerics.DG._1DSystem
                     evaluationNodes[m] = MapToOriginSpace(nodes[i]);
                 }
 
-                Vector evaluation = InitialFunction(evaluationNodes);
-
+                //Vector evaluation = (leftSpaceBoundary == 5.0 && calcMode==CalculationMode.Stone ? InitialFunction(evaluationNodes, false): InitialFunction(evaluationNodes,true));
+                Vector evaluation = InitialFunction(evaluationNodes, true);
                 for (int k = 0; k < SystemDimension; k++)
                     startSolution[i, k] = evaluation[k];
             }
