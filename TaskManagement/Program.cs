@@ -13,9 +13,7 @@ namespace TaskManagement
         {
             try
             {
-                ThirdProject.TaskOne one = new ThirdProject.TaskOne();
-                //one.TestSystemDG();
-                one.TestSystemDG();
+                FourthProject.TaskTwo.Test();
                 Console.Write("Calculated");
             }
             catch (Exception err)

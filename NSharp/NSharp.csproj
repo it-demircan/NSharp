@@ -46,6 +46,9 @@
     <Compile Include="Modelling\LocationOptimization\MultiFacilityProblemSolver.cs" />
     <Compile Include="Numerics\DG\1DSystem\DGSystemController.cs" />
     <Compile Include="Numerics\DG\1DSystem\DGSystemElement.cs" />
+    <Compile Include="Numerics\DG\2DSystem\2DElement.cs" />
+    <Compile Include="Numerics\DG\2DSystem\DGController2D.cs" />
+    <Compile Include="Numerics\DG\2DSystem\DGElement2D.cs" />
     <Compile Include="Numerics\DG\DGController.cs" />
     <Compile Include="Numerics\DG\DGElement.cs" />
     <Compile Include="Numerics\DG\IntegrationToolbox.cs" />

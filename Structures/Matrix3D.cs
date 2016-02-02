@@ -18,6 +18,8 @@ namespace Structures
         {
             matrices = new Matrix[dimZ];
             this.DimZ = dimZ;
+            this.DimX = dimN;
+            this.DimY = dimM;
             for (int i = 0; i < dimZ; i++)
             {
                 matrices[i] = new Matrix(dimN, dimM);
